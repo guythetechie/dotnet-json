@@ -2,6 +2,7 @@
 
 	<PropertyGroup>
 		<TargetFramework>net9.0</TargetFramework>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<AnalysisLevel>latest-all</AnalysisLevel>
 		<Nullable>enable</Nullable>
@@ -9,9 +10,15 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="LanguageExt.Core" Version="5.0.0-beta-36" />
-		<PackageReference Include="System.Linq.Async" Version="6.0.1" />
-		<PackageReference Include="System.Memory.Data" Version="9.0.0-rc.2.24473.5" />
+		<Compile Include="JsonResult.fs" />
+		<Compile Include="JsonNode.fs" />
+		<Compile Include="JsonArray.fs" />
+		<Compile Include="JsonValue.fs" />
+		<Compile Include="JsonObject.fs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="FSharpPlus" Version="1.6.1" />
 	</ItemGroup>
 
 </Project>

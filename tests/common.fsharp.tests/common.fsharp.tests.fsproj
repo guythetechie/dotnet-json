@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+		<AnalysisLevel>latest-all</AnalysisLevel>
+		<InvariantGlobalization>true</InvariantGlobalization>
+		<IsPackable>false</IsPackable>
+		<OutputType>Exe</OutputType>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Compile Include="Assertions.fs" />
+		<Compile Include="Gen.fs" />
+		<Compile Include="Check.fs" />
+		<Compile Include="JsonNode.fs" />
+		<Compile Include="JsonArray.fs" />
+		<Compile Include="JsonValue.fs" />
+		<Compile Include="JsonObject.fs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="coverlet.collector" Version="6.0.2" />
+		<PackageReference Include="Faqt" Version="4.2.1" />
+		<PackageReference Include="FsCheck" Version="3.0.0-rc3" />
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+		<!--<PackageReference Include="xunit.v3" Version="0.6.0-pre.7" />-->
+		<PackageReference Include="xunit" Version="2.9.2" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="3.0.0-pre.49">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\fsharp\common.fsharp.fsproj" />
+	</ItemGroup>
+
+</Project>
