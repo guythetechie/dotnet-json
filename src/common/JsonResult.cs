@@ -59,9 +59,6 @@ public class JsonResult :
     public static K<JsonResult, T> Pure<T>(T value) =>
         Succeed(value);
 
-    //public static K<JsonResult, T> Fail<T>(JsonError error) =>
-    //    JsonResult<T>.Fail(error);
-
     public static K<JsonResult, T2> Bind<T1, T2>(K<JsonResult, T1> ma, Func<T1, K<JsonResult, T2>> f) =>
         ma.As()
           .Match(f, Fail<T2>);
@@ -118,19 +115,11 @@ public class JsonResult<T> :
     public Unit Match(Action<T> Succ, Action<JsonError> Fail) =>
         value.Match(Fail, Succ);
 
-#pragma warning disable CA1000 // Do not declare static members on generic types
     internal static JsonResult<T> Succeed(T value) =>
         new(value);
 
     internal static JsonResult<T> Fail(JsonError error) =>
         new(error);
-#pragma warning restore CA1000 // Do not declare static members on generic types
-
-    //    public static implicit operator JsonResult<T>(JsonError error) =>
-    //        Fail(error);
-
-    //    public static implicit operator JsonResult<T>(T value) =>
-    //        Pure(value);
 
     public override bool Equals(object? obj) =>
         obj is JsonResult<T> result && Equals(result);
@@ -140,8 +129,10 @@ public class JsonResult<T> :
 
     public bool Equals(JsonResult<T>? other) =>
         other is not null
-        && this.Match(t => other.Match(t2 => t?.Equals(t2) ?? false, _ => false),
-                      error => other.Match(_ => false, error2 => error.Equals(error2)));
+        && this.Match(t => other.Match(t2 => t?.Equals(t2) ?? false,
+                                       _ => false),
+                      error => other.Match(_ => false,
+                                           error2 => error.Equals(error2)));
 }
 
 public static class JsonResultExtensions

@@ -21,7 +21,8 @@ public static class JsonObjectModule
 
     public static Option<JsonNode> GetOptionalProperty(this JsonObject? jsonObject, string propertyName) =>
         jsonObject.GetProperty(propertyName)
-                  .Match(Option<JsonNode>.Some, _ => Option<JsonNode>.None);
+                  .Match(Option<JsonNode>.Some,
+                         _ => Option<JsonNode>.None);
 
     public static JsonResult<T> GetProperty<T>(this JsonObject? jsonObject, string propertyName, Func<JsonNode, JsonResult<T>> selector) =>
         jsonObject.GetProperty(propertyName)
@@ -29,7 +30,8 @@ public static class JsonObjectModule
                   .AddPropertyNameToErrorMessage(propertyName);
 
     public static JsonResult<JsonObject> GetJsonObjectProperty(this JsonObject? jsonObject, string propertyName) =>
-        jsonObject.GetProperty(propertyName, jsonNode => jsonNode.AsJsonObject());
+        jsonObject.GetProperty(propertyName,
+                               jsonNode => jsonNode.AsJsonObject());
 
     private static JsonResult<T> AddPropertyNameToErrorMessage<T>(this JsonResult<T> result, string propertyName)
     {
@@ -40,30 +42,37 @@ public static class JsonObjectModule
     }
 
     public static JsonResult<JsonArray> GetJsonArrayProperty(this JsonObject? jsonObject, string propertyName) =>
-        jsonObject.GetProperty(propertyName, jsonNode => jsonNode.AsJsonArray());
+        jsonObject.GetProperty(propertyName,
+                               jsonNode => jsonNode.AsJsonArray());
 
     public static JsonResult<JsonValue> GetJsonValueProperty(this JsonObject? jsonObject, string propertyName) =>
-        jsonObject.GetProperty(propertyName, jsonNode => jsonNode.AsJsonValue());
+        jsonObject.GetProperty(propertyName,
+                               jsonNode => jsonNode.AsJsonValue());
 
     public static JsonResult<string> GetStringProperty(this JsonObject? jsonObject, string propertyName) =>
-        jsonObject.GetProperty(propertyName, jsonNode => jsonNode.AsJsonValue()
-                                                                 .Bind(jsonValue => jsonValue.AsString()));
+        jsonObject.GetProperty(propertyName,
+                               jsonNode => jsonNode.AsJsonValue()
+                                                   .Bind(jsonValue => jsonValue.AsString()));
 
     public static JsonResult<int> GetIntProperty(this JsonObject? jsonObject, string propertyName) =>
-        jsonObject.GetProperty(propertyName, jsonNode => jsonNode.AsJsonValue()
-                                                                 .Bind(jsonValue => jsonValue.AsInt()));
+        jsonObject.GetProperty(propertyName,
+                               jsonNode => jsonNode.AsJsonValue()
+                                                   .Bind(jsonValue => jsonValue.AsInt()));
 
     public static JsonResult<bool> GetBoolProperty(this JsonObject? jsonObject, string propertyName) =>
-        jsonObject.GetProperty(propertyName, jsonNode => jsonNode.AsJsonValue()
-                                                                 .Bind(jsonValue => jsonValue.AsBool()));
+        jsonObject.GetProperty(propertyName,
+                               jsonNode => jsonNode.AsJsonValue()
+                                                   .Bind(jsonValue => jsonValue.AsBool()));
 
     public static JsonResult<Guid> GetGuidProperty(this JsonObject? jsonObject, string propertyName) =>
-        jsonObject.GetProperty(propertyName, jsonNode => jsonNode.AsJsonValue()
-                                                                 .Bind(jsonValue => jsonValue.AsGuid()));
+        jsonObject.GetProperty(propertyName,
+                               jsonNode => jsonNode.AsJsonValue()
+                                                   .Bind(jsonValue => jsonValue.AsGuid()));
 
     public static JsonResult<Uri> GetAbsoluteUriProperty(this JsonObject? jsonObject, string propertyName) =>
-        jsonObject.GetProperty(propertyName, jsonNode => jsonNode.AsJsonValue()
-                                                                 .Bind(jsonValue => jsonValue.AsAbsoluteUri()));
+        jsonObject.GetProperty(propertyName,
+                               jsonNode => jsonNode.AsJsonValue()
+                                                   .Bind(jsonValue => jsonValue.AsAbsoluteUri()));
 
     public static JsonObject SetProperty(this JsonObject jsonObject, string propertyName, JsonNode? propertyValue)
     {

@@ -13,28 +13,25 @@ public class JsonArrayTests
     [Fact]
     public void ToJsonArray_has_correct_count()
     {
-        var generator = from count in Gen.Int[0, 100]
-                        from nodes in Generator.JsonNode.Null().Array[count]
-                        select (count, nodes);
+        var generator = Generator.JsonNode.Null().List;
 
-        generator.Sample((count, nodes) =>
+        generator.Sample(nodes =>
         {
             var jsonArray = nodes.ToJsonArray();
-            jsonArray.AsEnumerable().Should().HaveCount(count);
+            jsonArray.AsEnumerable().Should().HaveSameCount(nodes);
         });
     }
 
     [Fact]
     public async Task ToJsonArray_with_async_enumerable_has_correct_count()
     {
-        var generator = from count in Gen.Int[0, 100]
-                        from nodes in Generator.JsonNode.Null().Array[count]
-                        select (count, nodes.ToAsyncEnumerable());
+        var generator = Generator.JsonNode.Null().List;
 
-        await generator.SampleAsync(async (count, nodes) =>
+        await generator.SampleAsync(async nodes =>
         {
-            var jsonArray = await nodes.ToJsonArray(CancellationToken.None);
-            jsonArray.AsEnumerable().Should().HaveCount(count);
+            var nodesAsyncEnumerable = nodes.ToAsyncEnumerable();
+            var jsonArray = await nodesAsyncEnumerable.ToJsonArray(CancellationToken.None);
+            jsonArray.AsEnumerable().Should().HaveSameCount(nodes);
         });
     }
 
