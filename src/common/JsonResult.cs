@@ -157,9 +157,22 @@ public static class JsonResultExtensions
         result.Match(_ => result,
                      error => JsonResult.Fail<T>(f(error)));
 
-    public static T IfError<T>(this JsonResult<T> result, Func<JsonError, T> f) =>
+    public static T IfFail<T>(this JsonResult<T> result, Func<JsonError, T> f) =>
         result.Match(t => t, f);
 
+    public static T? DefaultIfFail<T>(this JsonResult<T> result) =>
+        result.Match<T?>(t => t, _ => default);
+
     public static T ThrowIfFail<T>(this JsonResult<T> result) =>
-        result.IfError(error => throw error.ToException());
+        result.IfFail(error => throw error.ToException());
+
+    // Enable LINQ query syntax
+    public static JsonResult<T2> Select<T1, T2>(this JsonResult<T1> result, Func<T1, T2> f) =>
+        result.Map(f);
+
+    public static JsonResult<T2> SelectMany<T1, T2>(this JsonResult<T1> result, Func<T1, JsonResult<T2>> f) =>
+        result.Bind(f);
+
+    public static JsonResult<T3> SelectMany<T1, T2, T3>(this JsonResult<T1> result, Func<T1, JsonResult<T2>> bind, Func<T1, T2, T3> project) =>
+        result.Bind(t1 => bind(t1).Map(t2 => project(t1, t2)));
 }
