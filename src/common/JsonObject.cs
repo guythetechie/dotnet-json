@@ -1,5 +1,6 @@
 ﻿using LanguageExt;
 using System;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace common;
@@ -79,4 +80,7 @@ public static class JsonObjectModule
         jsonObject[propertyName] = propertyValue;
         return jsonObject;
     }
+
+    public static JsonResult<JsonObject> ToJsonObject(BinaryData? data, JsonSerializerOptions? options = default) =>
+        JsonNodeModule.Deserialize<JsonObject>(data, options);
 }

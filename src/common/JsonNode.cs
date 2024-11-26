@@ -1,4 +1,6 @@
-﻿using System.Text.Json.Nodes;
+﻿using System.Text.Json;
+using System;
+using System.Text.Json.Nodes;
 
 namespace common;
 
@@ -27,4 +29,26 @@ public static class JsonNodeModule
             null => JsonResult.Fail<JsonValue>("JSON node is null."),
             _ => JsonResult.Fail<JsonValue>("JSON node is not a JSON value.")
         };
+
+    public static JsonResult<T> Deserialize<T>(BinaryData? data, JsonSerializerOptions? options = default)
+    {
+        if (data is null)
+        {
+            return JsonResult.Fail<T>("Binary data is null.");
+        }
+
+        try
+        {
+            var jsonObject = JsonSerializer.Deserialize<T>(data, options ?? JsonSerializerOptions.Web);
+
+            return jsonObject is null
+                ? JsonResult.Fail<T>("Deserialization return a null result.")
+                : JsonResult.Succeed(jsonObject);
+        }
+        catch (JsonException exception)
+        {
+            var jsonError = JsonError.From(exception);
+            return JsonResult.Fail<T>(jsonError);
+        }
+    }
 }

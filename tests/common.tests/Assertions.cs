@@ -4,6 +4,8 @@ using FluentAssertions.Primitives;
 using LanguageExt;
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace common.tests;
@@ -77,10 +79,11 @@ internal sealed class JsonNodeAssertions(JsonNode instance, AssertionChain asser
 
     protected override string Identifier { get; } = "node";
 
-    public AndConstraint<JsonNode> BeEquivalentTo(JsonNode? expected, string because = "", params object[] becauseArgs)
+    public AndConstraint<JsonNode> BeEquivalentTo(JsonNode? expected, JsonSerializerOptions? options = null, string because = "", params object[] becauseArgs)
     {
-        var actualString = Subject.ToJsonString();
-        var expectedString = expected?.ToJsonString();
+        var optionsToUse = options ?? new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+        var actualString = Subject.ToJsonString(optionsToUse);
+        var expectedString = expected?.ToJsonString(optionsToUse);
 
         assertionChain.BecauseOf(because, becauseArgs)
                       .ForCondition(actualString.Equals(expectedString, StringComparison.OrdinalIgnoreCase))

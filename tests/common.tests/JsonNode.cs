@@ -1,4 +1,5 @@
 ﻿using CsCheck;
+using System;
 using System.Text.Json.Nodes;
 using Xunit;
 
@@ -97,6 +98,40 @@ public class JsonNodeTests
         {
             var result = node.AsJsonValue();
             result.Should().BeSuccess().Which.Should().BeAssignableTo<JsonValue>();
+        });
+    }
+
+    [Fact]
+    public void Deserialize_fails_if_the_data_is_null()
+    {
+        var data = (BinaryData?)null;
+        var result = JsonNodeModule.Deserialize<JsonObject>(data);
+        result.Should().BeError();
+    }
+
+    [Fact]
+    public void Deserialize_fails_if_the_data_cannot_be_deserialized()
+    {
+        var generator = JsonNodeGenerator.NonJsonObject;
+
+        generator.Sample(node =>
+        {
+            var data = BinaryData.FromString(node.ToJsonString());
+            var result = JsonNodeModule.Deserialize<JsonObject>(data);
+            result.Should().BeError();
+        });
+    }
+
+    [Fact]
+    public void Deserialize_succeeds_if_the_data_can_be_deserialized()
+    {
+        var generator = JsonNodeGenerator.Value;
+
+        generator.Sample(node =>
+        {
+            var data = BinaryData.FromString(node.ToJsonString());
+            var result = JsonNodeModule.Deserialize<JsonNode>(data);
+            result.Should().BeSuccess().Which.Should().BeEquivalentTo(node);
         });
     }
 }
