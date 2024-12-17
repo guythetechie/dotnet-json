@@ -2,41 +2,46 @@
 using LanguageExt.Common;
 using LanguageExt.Traits;
 using System;
+using System.Collections.Frozen;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 
 namespace common;
 
-public sealed record JsonError : Error, Semigroup<JsonError>
+public sealed record JsonError : Semigroup<JsonError>
 {
-    private readonly JsonException exception;
+    private readonly FrozenSet<string> messages;
 
-    private JsonError(JsonException exception) => this.exception = exception;
+    private JsonError(IEnumerable<string> messages) => this.messages = messages.ToFrozenSet();
 
-    private JsonError(string message) : this(new JsonException(message)) { }
+    public static JsonError From(string message) => new([message]);
 
-    public override string Message => exception.Message;
+    public static JsonError From(Exception exception) =>
+        exception switch
+        {
+            AggregateException aggregateException =>
+                new JsonError([exception.Message,
+                                ..aggregateException.Flatten()
+                                                    .InnerExceptions
+                                                    .Select(exception => exception.Message)]),
+            _ => new([exception.Message])
+        };
 
-    public override bool IsExceptional { get; }
+    public string Message => messages.First();
 
-    public override bool IsExpected { get; } = true;
+    internal FrozenSet<string> Messages => messages;
 
-    public override Exception ToException() => exception;
-
-    public override ErrorException ToErrorException() => ErrorException.New(exception);
-
-    public static JsonError From(string message) => new(message);
-
-    public static JsonError From(JsonException exception) => new(exception);
-
-    public override bool HasException<T>() => typeof(T).IsAssignableFrom(typeof(JsonException));
+    public JsonException ToException() =>
+        messages.ToArray() switch
+        {
+        [var message] => new JsonException(message),
+            _ => new JsonException("Multiple errors, see inner exception for details.",
+                                    new AggregateException(messages.Select(message => new JsonException(message))))
+        };
 
     public JsonError Combine(JsonError rhs) =>
-        new(new JsonException("Multiple errors, see inner exception for details.",
-                              new AggregateException(exception.InnerException switch
-                              {
-                                  AggregateException aggregateException => [.. aggregateException.InnerExceptions, rhs.exception],
-                                  _ => [exception, rhs.exception]
-                              })));
+        new(messages.Concat(rhs.messages));
 
     public static JsonError operator +(JsonError lhs, JsonError rhs) =>
         lhs.Combine(rhs);
@@ -115,6 +120,12 @@ public class JsonResult<T> :
     public Unit Match(Action<T> Succ, Action<JsonError> Fail) =>
         value.Match(Fail, Succ);
 
+    public JsonResult<T2> Map<T2>(Func<T, T2> f) =>
+        new(value.Map(f));
+
+    public JsonResult<T2> Bind<T2>(Func<T, JsonResult<T2>> f) =>
+        new(value.Bind(t => f(t).value));
+
     internal static JsonResult<T> Succeed(T value) =>
         new(value);
 
@@ -140,13 +151,6 @@ public static class JsonResultExtensions
     public static JsonResult<T> As<T>(this K<JsonResult, T> k) =>
         (JsonResult<T>)k;
 
-    public static JsonResult<T2> Map<T1, T2>(this JsonResult<T1> result, Func<T1, T2> f) =>
-        result.Match(t1 => JsonResult.Succeed(f(t1)),
-                     JsonResult<T2>.Fail);
-
-    public static JsonResult<T2> Bind<T1, T2>(this JsonResult<T1> result, Func<T1, JsonResult<T2>> f) =>
-        result.Match(f, JsonResult<T2>.Fail);
-
     public static JsonResult<T> ReplaceError<T>(this JsonResult<T> result, string newErrorMessage) =>
         result.ReplaceError(JsonError.From(newErrorMessage));
 
@@ -166,13 +170,11 @@ public static class JsonResultExtensions
     public static T ThrowIfFail<T>(this JsonResult<T> result) =>
         result.IfFail(error => throw error.ToException());
 
-    // Enable LINQ query syntax
-    public static JsonResult<T2> Select<T1, T2>(this JsonResult<T1> result, Func<T1, T2> f) =>
-        result.Map(f);
-
-    public static JsonResult<T2> SelectMany<T1, T2>(this JsonResult<T1> result, Func<T1, JsonResult<T2>> f) =>
-        result.Bind(f);
-
-    public static JsonResult<T3> SelectMany<T1, T2, T3>(this JsonResult<T1> result, Func<T1, JsonResult<T2>> bind, Func<T1, T2, T3> project) =>
-        result.Bind(t1 => bind(t1).Map(t2 => project(t1, t2)));
+    public static Fin<T> ToFin<T>(this K<JsonResult, T> k) =>
+        k.As().Match(Fin<T>.Succ,
+                     jsonError => jsonError.Messages.ToArray() switch
+                     {
+                     [var message] => Error.New(message),
+                         var errors => Error.Many(errors.Select(Error.New).ToArray())
+                     });
 }

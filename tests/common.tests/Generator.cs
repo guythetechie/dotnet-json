@@ -7,7 +7,6 @@ using System.Text.Json.Nodes;
 
 namespace common.tests;
 
-
 internal static class JsonValueGenerator
 {
     public static Gen<JsonValue> Value { get; } =

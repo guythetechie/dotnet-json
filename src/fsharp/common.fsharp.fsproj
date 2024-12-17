@@ -18,11 +18,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="FSharpPlus" Version="1.6.1" />
+		<PackageReference Include="FSharpPlus" Version="1.7.0" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <PackageReference Update="FSharp.Core" Version="9.0.100" />
+		<PackageReference Update="FSharp.Core" Version="9.0.200-beta.24561.2" />
+		<PackageReference Include="System.Memory.Data" Version="9.0.0" />
 	</ItemGroup>
 
 </Project>

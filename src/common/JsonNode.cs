@@ -1,6 +1,9 @@
-﻿using System.Text.Json;
-using System;
+﻿using System;
+using System.IO;
+using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace common;
 
@@ -29,6 +32,50 @@ public static class JsonNodeModule
             null => JsonResult.Fail<JsonValue>("JSON node is null."),
             _ => JsonResult.Fail<JsonValue>("JSON node is not a JSON value.")
         };
+
+#pragma warning disable CA1068 // CancellationToken parameters must come last
+    public static async ValueTask<JsonResult<JsonNode>> From(Stream? data, CancellationToken cancellationToken = default, JsonNodeOptions? options = default)
+#pragma warning restore CA1068 // CancellationToken parameters must come last
+    {
+        try
+        {
+            return data switch
+            {
+                null => JsonResult.Fail<JsonNode>("Binary data is null."),
+                _ => await JsonNode.ParseAsync(data, options, cancellationToken: cancellationToken) switch
+                {
+                    null => JsonResult.Fail<JsonNode>("Deserialization returned a null result."),
+                    var node => JsonResult.Succeed(node)
+                }
+            };
+        }
+        catch (JsonException exception)
+        {
+            var jsonError = JsonError.From(exception);
+            return JsonResult.Fail<JsonNode>(jsonError);
+        }
+    }
+
+    public static JsonResult<JsonNode> From(BinaryData? data, JsonNodeOptions? options = default)
+    {
+        try
+        {
+            return data switch
+            {
+                null => JsonResult.Fail<JsonNode>("Binary data is null."),
+                _ => JsonNode.Parse(data, options) switch
+                {
+                    null => JsonResult.Fail<JsonNode>("Deserialization returned a null result."),
+                    var node => JsonResult.Succeed(node)
+                }
+            };
+        }
+        catch (JsonException exception)
+        {
+            var jsonError = JsonError.From(exception);
+            return JsonResult.Fail<JsonNode>(jsonError);
+        }
+    }
 
     public static JsonResult<T> Deserialize<T>(BinaryData? data, JsonSerializerOptions? options = default)
     {

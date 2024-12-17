@@ -32,8 +32,8 @@ public static class JsonArrayModule
         return jsonArray.Select((node, index) => (node, index))
                         .AsIterable()
                         .Traverse(x => nodeToElement(x.node, x.index))
-                        .As()
-                        .Map(iterable => iterable.ToImmutableArray());
+                        .Map(iterable => iterable.ToImmutableArray())
+                        .As();
 
         JsonResult<T> nodeToElement(JsonNode? node, int index) =>
             selector(node)

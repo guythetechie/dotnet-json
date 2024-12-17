@@ -65,6 +65,14 @@ let getIntProperty propertyName jsonObject =
     let getPropertyResult = JsonNode.asJsonValue >> bind JsonValue.asInt
     getPropertyFromResult getPropertyResult propertyName jsonObject
 
-let setProperty (propertyName: string) propertyValue (jsonObject: JsonObject) =
+let getDateTimeOffsetProperty propertyName jsonObject =
+    let getPropertyResult = JsonNode.asJsonValue >> bind JsonValue.asDateTimeOffset
+    getPropertyFromResult getPropertyResult propertyName jsonObject
+
+let setProperty (propertyName: string) (propertyValue: JsonNode | null) (jsonObject: JsonObject) =
     jsonObject[propertyName] <- propertyValue
+    jsonObject
+
+let removeProperty (propertyName: string) (jsonObject: JsonObject) =
+    jsonObject.Remove(propertyName) |> ignore
     jsonObject
