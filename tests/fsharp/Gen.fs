@@ -22,7 +22,7 @@ let jsonValue =
           generateDefault<byte> () |> Gen.map JsonValue.Create
           generateDefault<Guid> () |> Gen.map JsonValue.Create ]
 
-let toJsonNode gen =
+let toJsonNode<'a when 'a :> JsonNode> (gen: Gen<'a>) =
     gen |> Gen.map (fun value -> value :> JsonNode)
 
 let private jsonValueAsNode = toJsonNode jsonValue
@@ -57,12 +57,13 @@ let jsonArray = generateJsonArray jsonNode
 
 [<RequireQualifiedAccess>]
 module JsonValue =
-    let string = generateDefault<string>() |> Gen.map JsonValue.Create
+    let string = generateDefault<string> () |> Gen.map JsonValue.Create
 
     let nonString =
-        jsonValue |> Gen.filter (fun value -> value.GetValueKind() <> JsonValueKind.String)
+        jsonValue
+        |> Gen.filter (fun value -> value.GetValueKind() <> JsonValueKind.String)
 
-    let integer = generateDefault<int>() |> Gen.map JsonValue.Create
+    let integer = generateDefault<int> () |> Gen.map JsonValue.Create
 
     let nonInteger =
         jsonValue
@@ -79,7 +80,7 @@ module JsonValue =
         |> Gen.map JsonValue.Create
 
     let nonAbsoluteUri =
-        generateDefault<obj>()
+        generateDefault<obj> ()
         |> Gen.filter (fun value ->
             match Uri.TryCreate(value.ToString(), UriKind.Absolute) with
             | true, _ -> false
@@ -92,14 +93,14 @@ module JsonValue =
         |> Gen.map JsonValue.Create
 
     let nonGuid =
-        generateDefault<obj>()
+        generateDefault<obj> ()
         |> Gen.filter (fun value ->
             match Guid.TryParse(value.ToString()) with
             | true, _ -> false
             | _ -> true)
         |> Gen.map JsonValue.Create
 
-    let bool = Gen.elements [true; false]  |> Gen.map JsonValue.Create
+    let bool = Gen.elements [ true; false ] |> Gen.map JsonValue.Create
 
     let nonBool =
         generateDefault<obj> ()
@@ -113,12 +114,12 @@ module JsonValue =
 module JsonNode =
     let jsonObject = toJsonNode jsonObject
 
-    let nonJsonObject = Gen.oneof [toJsonNode jsonValue; toJsonNode jsonArray]
+    let nonJsonObject = Gen.oneof [ toJsonNode jsonValue; toJsonNode jsonArray ]
 
     let jsonArray = toJsonNode jsonArray
 
-    let nonJsonArray = Gen.oneof [toJsonNode jsonValue; toJsonNode jsonObject]
+    let nonJsonArray = Gen.oneof [ toJsonNode jsonValue; toJsonNode jsonObject ]
 
     let jsonValue = jsonValueAsNode
 
-    let nonJsonValue = Gen.oneof [toJsonNode jsonArray; toJsonNode jsonObject]
+    let nonJsonValue = Gen.oneof [ toJsonNode jsonArray; toJsonNode jsonObject ]

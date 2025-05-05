@@ -1,6 +1,8 @@
 ﻿[<RequireQualifiedAccess>]
 module common.fsharp.JsonValue
 
+#nowarn 3265
+
 open System
 open System.Text.Json.Nodes
 open System.Text.Json
@@ -28,22 +30,20 @@ let asAbsoluteUri jsonValue =
     |> bind (fun stringValue ->
         match Uri.TryCreate(stringValue, UriKind.Absolute) with
         | true, uri when
-            (match uri with
-             | Null -> false
-             | NonNull nonNullUri -> nonNullUri.HostNameType <> UriHostNameType.Unknown)
+            match uri with
+            | Null -> false
+            | NonNull nonNullUri -> nonNullUri.HostNameType <> UriHostNameType.Unknown
             ->
             JsonResult.succeed uri
         | _ -> JsonResult.failWithMessage errorMessage)
     |> JsonResult.setErrorMessage errorMessage
 
 let asGuid jsonValue =
-    let errorMessage = "JSON value is not a GUID."
-
     asString jsonValue
     |> bind (fun stringValue ->
         match Guid.TryParse(stringValue) with
         | true, guid -> JsonResult.succeed guid
-        | _ -> JsonResult.failWithMessage errorMessage)
+        | _ -> JsonResult.failWithMessage "JSON value is not a GUID.")
 
 let asBool (jsonValue: JsonValue) =
     match jsonValue.GetValueKind() with

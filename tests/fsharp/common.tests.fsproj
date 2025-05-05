@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net9.0</TargetFramework>
+		<TargetFramework>net10.0</TargetFramework>
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<AnalysisLevel>latest-all</AnalysisLevel>
 		<InvariantGlobalization>true</InvariantGlobalization>
@@ -20,24 +20,27 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="coverlet.collector" Version="6.0.2" />
-		<PackageReference Include="Faqt" Version="4.3.0" />
-		<PackageReference Include="FsCheck" Version="3.0.0-rc3" />
-		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+		<PackageReference Include="coverlet.collector" Version="6.0.4">
+		  <PrivateAssets>all</PrivateAssets>
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Faqt" Version="4.5.0" />
+		<PackageReference Include="FsCheck" Version="3.2.0" />
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.0-preview-25107-01" />
 		<!--<PackageReference Include="xunit.v3" Version="0.6.0-pre.7" />-->
-		<PackageReference Include="xunit" Version="2.9.2" />
-		<PackageReference Include="xunit.runner.visualstudio" Version="3.0.0">
+		<PackageReference Include="xunit" Version="2.9.3" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="3.1.0">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\fsharp\common.fsharp.fsproj" />
+		<ProjectReference Include="..\..\src\fsharp\common.fsproj" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <PackageReference Update="FSharp.Core" Version="9.0.200-beta.24561.2" />
+	  <PackageReference Update="FSharp.Core" Version="9.0.300-beta.25181.1" />
 	</ItemGroup>
 
 </Project>

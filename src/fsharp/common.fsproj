@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net9.0</TargetFramework>
+		<TargetFramework>net10.0</TargetFramework>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<AnalysisLevel>latest-all</AnalysisLevel>
@@ -22,8 +22,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Update="FSharp.Core" Version="9.0.200-beta.24561.2" />
-		<PackageReference Include="System.Memory.Data" Version="9.0.0" />
+		<PackageReference Update="FSharp.Core" Version="9.0.300-beta.25181.1" />
+		<PackageReference Include="System.Memory.Data" Version="10.0.0-preview.3.25171.5" />
 	</ItemGroup>
 
 </Project>

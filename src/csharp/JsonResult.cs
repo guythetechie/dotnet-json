@@ -35,7 +35,7 @@ public sealed record JsonError : Semigroup<JsonError>
     public JsonException ToException() =>
         messages.ToArray() switch
         {
-        [var message] => new JsonException(message),
+            [var message] => new JsonException(message),
             _ => new JsonException("Multiple errors, see inner exception for details.",
                                     new AggregateException(messages.Select(message => new JsonException(message))))
         };
@@ -81,9 +81,15 @@ public class JsonResult :
                                     error2 => Fail<T2>(error1 + error2)));
 
     public static K<JsonResult, T> Choose<T>(K<JsonResult, T> fa, K<JsonResult, T> fb) =>
+        Choose(fa, () => fb);
+
+    public static K<JsonResult, T> Choose<T>(K<JsonResult, T> fa, Func<K<JsonResult, T>> fb) =>
         fa.As()
           .Match(_ => fa,
-                 _ => fb);
+                 _ => fb());
+
+    public static K<JsonResult, A> Combine<A>(K<JsonResult, A> lhs, K<JsonResult, A> rhs) =>
+        lhs.Choose(rhs);
 
     public static K<TApplicative, K<JsonResult, T2>> Traverse<TApplicative, T1, T2>(Func<T1, K<TApplicative, T2>> f, K<JsonResult, T1> ta) where TApplicative : Applicative<TApplicative> =>
         (K<TApplicative, K<JsonResult, T2>>)
@@ -174,7 +180,7 @@ public static class JsonResultExtensions
         k.As().Match(Fin<T>.Succ,
                      jsonError => jsonError.Messages.ToArray() switch
                      {
-                     [var message] => Error.New(message),
+                         [var message] => Error.New(message),
                          var errors => Error.Many(errors.Select(Error.New).ToArray())
                      });
 }
