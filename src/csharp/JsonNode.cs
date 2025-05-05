@@ -33,16 +33,17 @@ public static class JsonNodeModule
             _ => JsonResult.Fail<JsonValue>("JSON node is not a JSON value.")
         };
 
-#pragma warning disable CA1068 // CancellationToken parameters must come last
-    public static async ValueTask<JsonResult<JsonNode>> From(Stream? data, CancellationToken cancellationToken = default, JsonNodeOptions? options = default)
-#pragma warning restore CA1068 // CancellationToken parameters must come last
+    public static async ValueTask<JsonResult<JsonNode>> From(Stream? data,
+                                                             JsonNodeOptions? nodeOptions = default,
+                                                             JsonDocumentOptions documentOptions = default,
+                                                             CancellationToken cancellationToken = default)
     {
         try
         {
             return data switch
             {
                 null => JsonResult.Fail<JsonNode>("Binary data is null."),
-                _ => await JsonNode.ParseAsync(data, options, cancellationToken: cancellationToken) switch
+                _ => await JsonNode.ParseAsync(data, nodeOptions, documentOptions, cancellationToken) switch
                 {
                     null => JsonResult.Fail<JsonNode>("Deserialization returned a null result."),
                     var node => JsonResult.Succeed(node)
@@ -98,4 +99,8 @@ public static class JsonNodeModule
             return JsonResult.Fail<T>(jsonError);
         }
     }
+
+    public static Stream ToStream(JsonNode node, JsonSerializerOptions? options = default) =>
+        BinaryData.FromObjectAsJson(node, options ?? JsonSerializerOptions.Web)
+                  .ToStream();
 }
