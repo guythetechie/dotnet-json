@@ -1,4 +1,5 @@
 ﻿using CsCheck;
+using FluentAssertions;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
@@ -181,6 +182,20 @@ public class JsonNodeTests
         {
             var data = BinaryData.FromString(node.ToJsonString());
             var result = JsonNodeModule.Deserialize<JsonNode>(data);
+            result.Should().BeSuccess().Which.Should().BeEquivalentTo(node);
+        });
+    }
+
+    [Fact]
+    public async Task ToStream_serializes_the_node_to_a_stream()
+    {
+        var generator = JsonNodeGenerator.Value;
+
+        await generator.SampleAsync(async node =>
+        {
+            using var stream = JsonNodeModule.ToStream(node);
+
+            var result = await JsonNodeModule.From(stream);
             result.Should().BeSuccess().Which.Should().BeEquivalentTo(node);
         });
     }

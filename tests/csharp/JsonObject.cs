@@ -475,4 +475,17 @@ public class JsonObjectTests
             result.Should().BeSuccess().Which.Should().Be(propertyValue.GetValue<Uri>());
         });
     }
+
+    [Fact]
+    public void ToBinaryData_successfully_converts_the_binary_data_to_json()
+    {
+        var generator = JsonObjectGenerator.Value;
+
+        generator.Sample(json =>
+        {
+            var bytes = BinaryData.FromObjectAsJson(json);
+            var result = JsonObjectModule.ToJsonObject(bytes);
+            result.Should().BeSuccess().Which.Should().BeEquivalentTo(json);
+        });
+    }
 }
