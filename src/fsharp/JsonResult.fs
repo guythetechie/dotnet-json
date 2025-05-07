@@ -1,4 +1,4 @@
-﻿namespace common.fsharp
+﻿namespace common
 
 open System
 open System.Text.Json
@@ -19,7 +19,9 @@ module JsonError =
             |> JsonError
         | _ -> fromString exn.Message
 
-    let getMessage (JsonError error) = Seq.head error
+    let getMessage (JsonError errors) = Seq.head errors
+
+    let getMessages (JsonError errors) = errors
 
     let toJsonException (JsonError error) =
         match List.ofSeq error with

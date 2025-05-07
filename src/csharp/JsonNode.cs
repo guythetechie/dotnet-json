@@ -42,7 +42,7 @@ public static class JsonNodeModule
         {
             return data switch
             {
-                null => JsonResult.Fail<JsonNode>("Binary data is null."),
+                null => JsonResult.Fail<JsonNode>("Stream is null."),
                 _ => await JsonNode.ParseAsync(data, nodeOptions, documentOptions, cancellationToken) switch
                 {
                     null => JsonResult.Fail<JsonNode>("Deserialization returned a null result."),

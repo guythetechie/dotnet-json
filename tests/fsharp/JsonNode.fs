@@ -4,7 +4,7 @@ open System
 open System.IO
 open Xunit
 open Faqt
-open common.fsharp
+open common
 
 [<Fact>]
 let ``asJsonObject with null returns a failure`` () =

@@ -59,7 +59,7 @@ public class JsonResult :
         JsonResult<T>.Fail(error);
 
     public static JsonResult<T> Fail<T>(string errorMessage) =>
-        JsonResult<T>.Fail(JsonError.From(errorMessage));
+        Fail<T>(JsonError.From(errorMessage));
 
     public static K<JsonResult, T> Pure<T>(T value) =>
         Succeed(value);
@@ -172,6 +172,9 @@ public static class JsonResultExtensions
 
     public static T? DefaultIfFail<T>(this JsonResult<T> result) =>
         result.Match<T?>(t => t, _ => default);
+
+    public static T ThrowIfFail<T>(this K<JsonResult, T> k) =>
+        k.As().ThrowIfFail();
 
     public static T ThrowIfFail<T>(this JsonResult<T> result) =>
         result.IfFail(error => throw error.ToException());

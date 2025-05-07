@@ -1,5 +1,5 @@
 ﻿[<RequireQualifiedAccess>]
-module common.fsharp.JsonValue
+module common.JsonValue
 
 #nowarn 3265
 

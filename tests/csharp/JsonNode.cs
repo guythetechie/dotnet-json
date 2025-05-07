@@ -111,7 +111,7 @@ public class JsonNodeTests
     public async Task FromStream_fails_if_the_stream_is_null()
     {
         var stream = (Stream?)null;
-        var result = await JsonNodeModule.From(stream, CancellationToken.None);
+        var result = await JsonNodeModule.From(stream, cancellationToken: CancellationToken.None);
         result.Should().BeError();
     }
 
@@ -124,7 +124,7 @@ public class JsonNodeTests
         await generator.SampleAsync(async input =>
         {
             using var stream = BinaryData.FromString(input).ToStream();
-            var result = await JsonNodeModule.From(stream, CancellationToken.None);
+            var result = await JsonNodeModule.From(stream, cancellationToken: CancellationToken.None);
             result.Should().BeSuccess();
         });
     }

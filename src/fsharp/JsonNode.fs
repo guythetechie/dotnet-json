@@ -1,7 +1,8 @@
 ﻿[<RequireQualifiedAccess>]
-module common.fsharp.JsonNode
+module common.JsonNode
 
 open System
+open System.Text.Json
 open System.Text.Json.Nodes
 open System.IO
 
@@ -23,7 +24,13 @@ let asJsonValue (node: JsonNode | null) =
     | Null -> JsonResult.failWithMessage "JSON node is null"
     | _ -> JsonResult.failWithMessage "JSON node is not a JSON value"
 
-let fromStream (stream: Stream | null) =
+let private ifNoneNullable option =
+    option |> Option.map Nullable |> Option.defaultValue (Nullable())
+
+let private ifNoneDefault option =
+    option |> Option.defaultValue Unchecked.defaultof<'a>
+
+let fromStreamWithOptions (stream: Stream | null) nodeOptions documentOptions =
     async {
         let! cancellationToken = Async.CancellationToken
 
@@ -31,23 +38,36 @@ let fromStream (stream: Stream | null) =
         | Null -> return JsonResult.failWithMessage "Stream is null."
         | NonNull stream ->
             try
+                let nodeOptions = ifNoneNullable nodeOptions
+                let documentOptions = ifNoneDefault documentOptions
+
                 match!
-                    JsonNode.ParseAsync(stream, cancellationToken = cancellationToken)
+                    JsonNode.ParseAsync(stream, nodeOptions, documentOptions, cancellationToken = cancellationToken)
                     |> Async.AwaitTask
                 with
-                | Null -> return JsonResult.failWithMessage "Stream is null or is not a valid JSON."
+                | Null -> return JsonResult.failWithMessage "Deserialization returned a null result."
                 | NonNull node -> return JsonResult.succeed node
             with exn ->
                 return JsonError.fromException exn |> JsonResult.fail
     }
 
-let fromBinaryData (data: BinaryData | null) =
+let fromStream stream = fromStreamWithOptions stream None None
+
+let fromBinaryDataWithOptions (data: BinaryData | null) nodeOptions =
     try
         match data with
         | Null -> JsonResult.failWithMessage "Binary data is null."
         | NonNull data ->
-            match JsonNode.Parse(data) with
-            | Null -> JsonResult.failWithMessage "Binary data is null or is not a valid JSON."
+            let nodeOptions = ifNoneNullable nodeOptions
+
+            match JsonNode.Parse(data, nodeOptions) with
+            | Null -> JsonResult.failWithMessage "Deserialization returned a null result."
             | NonNull node -> JsonResult.succeed node
     with exn ->
         JsonError.fromException exn |> JsonResult.fail
+
+let fromBinaryData data = fromBinaryDataWithOptions data None
+
+let toBinaryData (node: JsonNode) = BinaryData.FromObjectAsJson(node)
+
+let toStream (node: JsonNode) = toBinaryData node |> _.ToStream()

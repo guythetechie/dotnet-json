@@ -1,5 +1,5 @@
 ﻿[<RequireQualifiedAccess>]
-module common.fsharp.JsonObject
+module common.JsonObject
 
 open FSharpPlus
 open System.Text.Json.Nodes
@@ -76,3 +76,15 @@ let setProperty (propertyName: string) (propertyValue: JsonNode | null) (jsonObj
 let removeProperty (propertyName: string) (jsonObject: JsonObject) =
     jsonObject.Remove(propertyName) |> ignore
     jsonObject
+
+let fromStreamWithOptions stream nodeOptions documentOptions =
+    JsonNode.fromStreamWithOptions stream nodeOptions documentOptions
+    |> map (bind JsonNode.asJsonObject)
+
+let fromStream stream = fromStreamWithOptions stream None None
+
+let fromBinaryDataWithOptions data nodeOptions =
+    JsonNode.fromBinaryDataWithOptions data nodeOptions
+    |> bind JsonNode.asJsonObject
+
+let fromBinaryData data = fromBinaryDataWithOptions data None

@@ -1,7 +1,7 @@
 ﻿module JsonValueTests
 
 open Xunit
-open common.fsharp
+open common
 open Faqt
 
 

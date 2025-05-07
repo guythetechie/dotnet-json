@@ -25,14 +25,14 @@ public static class JsonObjectModule
                   .Match(Option<JsonNode>.Some,
                          _ => Option<JsonNode>.None);
 
-    public static JsonResult<T> GetProperty<T>(this JsonObject? jsonObject, string propertyName, Func<JsonNode, JsonResult<T>> selector) =>
-        jsonObject.GetProperty(propertyName)
-                  .Bind(selector)
-                  .AddPropertyNameToErrorMessage(propertyName);
-
     public static JsonResult<JsonObject> GetJsonObjectProperty(this JsonObject? jsonObject, string propertyName) =>
         jsonObject.GetProperty(propertyName,
                                jsonNode => jsonNode.AsJsonObject());
+
+    private static JsonResult<T> GetProperty<T>(this JsonObject? jsonObject, string propertyName, Func<JsonNode, JsonResult<T>> selector) =>
+        jsonObject.GetProperty(propertyName)
+                  .Bind(selector)
+                  .AddPropertyNameToErrorMessage(propertyName);
 
     private static JsonResult<T> AddPropertyNameToErrorMessage<T>(this JsonResult<T> result, string propertyName)
     {
