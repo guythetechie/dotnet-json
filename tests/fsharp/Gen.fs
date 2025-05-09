@@ -31,7 +31,9 @@ let generateJsonArray (nodeGen: Gen<JsonNode | null>) =
     Gen.arrayOf nodeGen |> Gen.map JsonArray
 
 let generateJsonObject (nodeGen: Gen<JsonNode | null>) =
-    Gen.zip (generateDefault<string> ()) nodeGen
+    let propertyGen = generateDefault<string> () |> Gen.filter (String.IsNullOrWhiteSpace >> not)
+
+    Gen.zip propertyGen nodeGen
     |> Gen.listOf
     |> Gen.map (Seq.distinctBy (fun (first, second) -> first.ToUpperInvariant()))
     |> Gen.map (Seq.map KeyValuePair.Create)
