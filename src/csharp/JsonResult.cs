@@ -9,6 +9,9 @@ using System.Text.Json;
 
 namespace common;
 
+/// <summary>
+/// Represents one or more JSON errors.
+/// </summary>
 public sealed record JsonError : Semigroup<JsonError>
 {
     private readonly FrozenSet<string> messages;
@@ -47,7 +50,10 @@ public sealed record JsonError : Semigroup<JsonError>
         lhs.Combine(rhs);
 }
 
-public class JsonResult :
+/// <summary>
+/// Helper class with implementations for <see cref="JsonResult{T}"/>.
+/// </summary>
+public sealed class JsonResult :
     Monad<JsonResult>,
     Traversable<JsonResult>,
     Choice<JsonResult>
@@ -112,6 +118,11 @@ public class JsonResult :
                  _ => initialState);
 }
 
+/// <summary>
+/// Either a <see cref="JsonError"/> or <typeparamref name="T"/>. Useful for
+/// representing the result of a JSON operation that can succeed or fail.
+/// </summary>
+/// <typeparam name="T"></typeparam>
 public class JsonResult<T> :
     IEquatable<JsonResult<T>>,
     K<JsonResult, T>
