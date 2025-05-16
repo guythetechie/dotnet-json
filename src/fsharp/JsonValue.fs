@@ -29,12 +29,14 @@ let asAbsoluteUri jsonValue =
     asString jsonValue
     |> bind (fun stringValue ->
         match Uri.TryCreate(stringValue, UriKind.Absolute) with
-        | true, uri when
+        | true, uri ->
             match uri with
-            | Null -> false
-            | NonNull nonNullUri -> nonNullUri.HostNameType <> UriHostNameType.Unknown
-            ->
-            JsonResult.succeed uri
+            | Null -> JsonResult.failWithMessage "JSON value URI is null."
+            | NonNull nonNullUri ->
+                if nonNullUri.HostNameType = UriHostNameType.Unknown then
+                    JsonResult.failWithMessage errorMessage
+                else
+                    JsonResult.succeed nonNullUri
         | _ -> JsonResult.failWithMessage errorMessage)
     |> JsonResult.setErrorMessage errorMessage
 
