@@ -74,10 +74,34 @@ public static class JsonObjectModule
                                jsonNode => jsonNode.AsJsonValue()
                                                    .Bind(jsonValue => jsonValue.AsAbsoluteUri()));
 
-    public static JsonObject SetProperty(this JsonObject jsonObject, string propertyName, JsonNode? propertyValue)
+    /// <summary>
+    /// Sets a property in the JSON object, leaving the original object unchanged and returning a new object.
+    /// To mutate the original object (e.g. for performance reasons), set <paramref name="mutateOriginal"/> to true.
+    /// </summary>
+    public static JsonObject SetProperty(this JsonObject jsonObject, string propertyName, JsonNode? propertyValue, bool mutateOriginal = false)
     {
-        jsonObject[propertyName] = propertyValue;
-        return jsonObject;
+        var newJson = mutateOriginal
+                        ? jsonObject
+                        : jsonObject.DeepClone().AsObject();
+
+        newJson[propertyName] = propertyValue;
+
+        return newJson;
+    }
+
+    /// <summary>
+    /// Removes a property from the JSON object, leaving the original object unchanged and returning a new object.
+    /// To mutate the original object (e.g. for performance reasons), set <paramref name="mutateOriginal"/> to true.
+    /// </summary>
+    public static JsonObject RemoveProperty(this JsonObject jsonObject, string propertyName, bool mutateOriginal = false)
+    {
+        var newJson = mutateOriginal
+                        ? jsonObject
+                        : jsonObject.DeepClone().AsObject();
+
+        newJson.Remove(propertyName);
+
+        return newJson;
     }
 
     public static Result<JsonObject> ToJsonObject(BinaryData? data, JsonSerializerOptions? options = default) =>

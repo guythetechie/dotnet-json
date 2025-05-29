@@ -23,10 +23,10 @@ public class JsonObjectTests
     }
 
     private static Gen<(string PropertyName, JsonObject JsonObject)> GenerateJsonObject(JsonNode? propertyValue) =>
-        from jsonObject in JsonObjectGenerator.Value
+        from jsonObject in Generator.JsonObject
         from propertyName in GeneratePropertyName()
         let updatedJsonObject = jsonObject.SetProperty(propertyName, propertyValue)
-        select (propertyName, jsonObject);
+        select (propertyName, updatedJsonObject);
 
 
     private static Gen<string> GeneratePropertyName() =>
@@ -35,7 +35,7 @@ public class JsonObjectTests
     [Fact]
     public void GetProperty_fails_if_the_property_is_missing()
     {
-        var generator = from jsonObject in JsonObjectGenerator.Value
+        var generator = from jsonObject in Generator.JsonObject
                         from propertyName in GeneratePropertyName()
                         where jsonObject.ContainsKey(propertyName) is false
                         select (propertyName, jsonObject);
@@ -66,7 +66,7 @@ public class JsonObjectTests
     [Fact]
     public void GetOptionalProperty_returns_none_if_the_property_is_missing()
     {
-        var generator = from jsonObject in JsonObjectGenerator.Value
+        var generator = from jsonObject in Generator.JsonObject
                         from propertyName in GeneratePropertyName()
                         where jsonObject.ContainsKey(propertyName) is false
                         select (propertyName, jsonObject);
@@ -112,7 +112,7 @@ public class JsonObjectTests
     [Fact]
     public void GetJsonObjectProperty_fails_if_the_property_is_missing()
     {
-        var generator = from jsonObject in JsonObjectGenerator.Value
+        var generator = from jsonObject in Generator.JsonObject
                         from propertyName in GeneratePropertyName()
                         where jsonObject.ContainsKey(propertyName) is false
                         select (propertyName, jsonObject);
@@ -158,7 +158,7 @@ public class JsonObjectTests
     [Fact]
     public void GetJsonArrayProperty_fails_if_the_property_is_missing()
     {
-        var generator = from jsonObject in JsonObjectGenerator.Value
+        var generator = from jsonObject in Generator.JsonObject
                         from propertyName in GeneratePropertyName()
                         where jsonObject.ContainsKey(propertyName) is false
                         select (propertyName, jsonObject);
@@ -204,7 +204,7 @@ public class JsonObjectTests
     [Fact]
     public void GetJsonValueProperty_fails_if_the_property_is_missing()
     {
-        var generator = from jsonObject in JsonObjectGenerator.Value
+        var generator = from jsonObject in Generator.JsonObject
                         from propertyName in GeneratePropertyName()
                         where jsonObject.ContainsKey(propertyName) is false
                         select (propertyName, jsonObject);
@@ -250,7 +250,7 @@ public class JsonObjectTests
     [Fact]
     public void GetStringProperty_fails_if_the_property_is_missing()
     {
-        var generator = from jsonObject in JsonObjectGenerator.Value
+        var generator = from jsonObject in Generator.JsonObject
                         from propertyName in GeneratePropertyName()
                         where jsonObject.ContainsKey(propertyName) is false
                         select (propertyName, jsonObject);
@@ -296,7 +296,7 @@ public class JsonObjectTests
     [Fact]
     public void GetIntProperty_fails_if_the_property_is_missing()
     {
-        var generator = from jsonObject in JsonObjectGenerator.Value
+        var generator = from jsonObject in Generator.JsonObject
                         from propertyName in GeneratePropertyName()
                         where jsonObject.ContainsKey(propertyName) is false
                         select (propertyName, jsonObject);
@@ -341,7 +341,7 @@ public class JsonObjectTests
     [Fact]
     public void GetBoolProperty_fails_if_the_property_is_missing()
     {
-        var generator = from jsonObject in JsonObjectGenerator.Value
+        var generator = from jsonObject in Generator.JsonObject
                         from propertyName in GeneratePropertyName()
                         where jsonObject.ContainsKey(propertyName) is false
                         select (propertyName, jsonObject);
@@ -386,7 +386,7 @@ public class JsonObjectTests
     [Fact]
     public void GetGuidProperty_fails_if_the_property_is_missing()
     {
-        var generator = from jsonObject in JsonObjectGenerator.Value
+        var generator = from jsonObject in Generator.JsonObject
                         from propertyName in GeneratePropertyName()
                         where jsonObject.ContainsKey(propertyName) is false
                         select (propertyName, jsonObject);
@@ -432,7 +432,7 @@ public class JsonObjectTests
     [Fact]
     public void GetAbsoluteUriProperty_fails_if_the_property_is_missing()
     {
-        var generator = from jsonObject in JsonObjectGenerator.Value
+        var generator = from jsonObject in Generator.JsonObject
                         from propertyName in GeneratePropertyName()
                         where jsonObject.ContainsKey(propertyName) is false
                         select (propertyName, jsonObject);
@@ -472,6 +472,79 @@ public class JsonObjectTests
             var (propertyName, propertyValue, jsonObject) = x;
             var result = jsonObject.GetAbsoluteUriProperty(propertyName);
             result.Should().BeSuccess().Which.Should().Be(propertyValue.GetValue<Uri>());
+        });
+    }
+
+    [Fact]
+    public void ToBinaryData_succeeds_if_the_content_is_a_json_object()
+    {
+        var generator = Generator.JsonObject;
+
+        generator.Sample(jsonObject =>
+        {
+            var binaryData = BinaryData.FromObjectAsJson(jsonObject);
+
+            var result = JsonObjectModule.ToJsonObject(binaryData);
+
+            result.Should().BeSuccess().Which.Should().BeEquivalentTo(jsonObject);
+        });
+    }
+
+    [Fact]
+    public void ToBinaryData_fails_if_the_content_is_not_a_json_object()
+    {
+        var generator = JsonNodeGenerator.NonJsonObject;
+
+        generator.Sample(jsonNode =>
+        {
+            var binaryData = BinaryData.FromObjectAsJson(jsonNode);
+
+            var result = JsonObjectModule.ToJsonObject(binaryData);
+
+            result.Should().BeError();
+        });
+    }
+
+    [Fact]
+    public void SetProperty_sets_the_property_in_the_json_object()
+    {
+        var generator = from jsonObject in Generator.JsonObject
+                            // Generate a property name that is either one of the existing keys or a new one
+                        from propertyName in jsonObject.Count > 0
+                                                ? Gen.OneOf(Gen.OneOfConst(jsonObject.ToDictionary().Keys.ToArray()),
+                                                            GeneratePropertyName())
+                                                : GeneratePropertyName()
+                        from propertyValue in JsonNodeGenerator.Value
+                        select (jsonObject, propertyName, propertyValue);
+
+        generator.Sample(x =>
+        {
+            var (jsonObject, propertyName, propertyValue) = x;
+
+            var result = jsonObject.SetProperty(propertyName, propertyValue);
+
+            result.Should().ContainProperty(propertyName).Which?.Should().BeEquivalentTo(propertyValue);
+        });
+    }
+
+    [Fact]
+    public void RemoveProperty_removes_the_property_from_the_json_object()
+    {
+        var generator = from jsonObject in Generator.JsonObject
+                            // Generate a property name that is either one of the existing keys or a new one
+                        from propertyName in jsonObject.Count > 0
+                                                ? Gen.OneOf(Gen.OneOfConst(jsonObject.ToDictionary().Keys.ToArray()),
+                                                            GeneratePropertyName())
+                                                : GeneratePropertyName()
+                        select (jsonObject, propertyName);
+
+        generator.Sample(x =>
+        {
+            var (jsonObject, propertyName) = x;
+
+            var result = jsonObject.RemoveProperty(propertyName);
+
+            result.Should().NotContainProperty(propertyName);
         });
     }
 }
