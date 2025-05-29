@@ -1,7 +1,7 @@
 ﻿module JsonArrayTests
 
 open Xunit
-open common.fsharp
+open common
 open Faqt
 open FsCheck
 open FsCheck.FSharp

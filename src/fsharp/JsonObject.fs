@@ -1,5 +1,5 @@
 ﻿[<RequireQualifiedAccess>]
-module common.fsharp.JsonObject
+module common.JsonObject
 
 open FSharpPlus
 open System.Text.Json.Nodes

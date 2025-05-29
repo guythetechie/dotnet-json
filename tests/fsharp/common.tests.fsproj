@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework>
+		<TargetFramework>net9.0</TargetFramework>
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<AnalysisLevel>latest-all</AnalysisLevel>
 		<InvariantGlobalization>true</InvariantGlobalization>
@@ -33,7 +33,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\fsharp\common.fsharp.fsproj" />
+		<ProjectReference Include="..\..\src\fsharp\common.fsproj" />
 	</ItemGroup>
 
 	<ItemGroup>

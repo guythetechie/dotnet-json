@@ -90,7 +90,7 @@ internal sealed class ResultAssertions<T>(Result<T> subject, AssertionChain asse
     }
 }
 
-internal sealed class JsonNodeAssertions(JsonNode instance, AssertionChain assertionChain) : ReferenceTypeAssertions<JsonNode, JsonNodeAssertions>(instance, assertionChain)
+internal class JsonNodeAssertions(JsonNode instance, AssertionChain assertionChain) : ReferenceTypeAssertions<JsonNode, JsonNodeAssertions>(instance, assertionChain)
 {
     private readonly AssertionChain assertionChain = assertionChain;
 
@@ -110,9 +110,38 @@ internal sealed class JsonNodeAssertions(JsonNode instance, AssertionChain asser
     }
 }
 
+internal sealed class JsonObjectAssertions(JsonObject instance, AssertionChain assertionChain) : JsonNodeAssertions(instance, assertionChain)
+{
+    private readonly AssertionChain assertionChain = assertionChain;
+    protected override string Identifier { get; } = "JSON object";
+
+    public AndWhichConstraint<JsonObjectAssertions, JsonNode?> ContainProperty(string propertyName, [StringSyntax("CompositeFormat")] string because = "", params object[] becauseArgs)
+    {
+        assertionChain
+            .BecauseOf(because, becauseArgs)
+            .ForCondition(Subject.AsObject().ContainsKey(propertyName))
+            .FailWith("Expected {context:JSON object} to contain property '{0}'{reason}, but it did not.", propertyName);
+
+        return new AndWhichConstraint<JsonObjectAssertions, JsonNode?>(this, Subject[propertyName]);
+    }
+
+    public AndConstraint<JsonObjectAssertions> NotContainProperty(string propertyName, [StringSyntax("CompositeFormat")] string because = "", params object[] becauseArgs)
+    {
+        assertionChain
+            .BecauseOf(because, becauseArgs)
+            .ForCondition(Subject.AsObject().ContainsKey(propertyName) is false)
+            .FailWith("Expected {context:JSON object} not to contain property '{0}'{reason}, but it did.", propertyName);
+
+        return new AndConstraint<JsonObjectAssertions>(this);
+    }
+}
+
 internal static class AssertionExtensions
 {
     public static JsonNodeAssertions Should(this JsonNode subject) =>
+        new(subject, AssertionChain.GetOrCreate());
+
+    public static JsonObjectAssertions Should(this JsonObject subject) =>
         new(subject, AssertionChain.GetOrCreate());
 
     public static OptionAssertions<T> Should<T>(this Option<T> subject) =>

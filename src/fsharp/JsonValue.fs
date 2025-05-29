@@ -1,5 +1,5 @@
 ﻿[<RequireQualifiedAccess>]
-module common.fsharp.JsonValue
+module common.JsonValue
 
 open System
 open System.Text.Json.Nodes
@@ -54,13 +54,9 @@ let asBool (jsonValue: JsonValue) =
 let asDateTimeOffset (jsonValue: JsonValue) =
     let errorMessage = "JSON value is not a date time offset."
 
-    match jsonValue.TryGetValue<DateTimeOffset>() with
-    | true, dateTimeOffset -> JsonResult.succeed dateTimeOffset
-    | _ ->
-        monad {
-            let! stringValue = asString jsonValue |> JsonResult.setErrorMessage errorMessage
-
-            match DateTimeOffset.TryParse(stringValue) with
-            | true, dateTimeOffset -> return dateTimeOffset
-            | _ -> return! JsonResult.failWithMessage errorMessage
-        }
+    match asString jsonValue with
+    | JsonResult.Success stringValue ->
+        match DateTimeOffset.TryParse(stringValue) with
+        | true, dateTimeOffset -> JsonResult.succeed dateTimeOffset
+        | _ -> JsonResult.failWithMessage errorMessage
+    | JsonResult.Failure _ -> JsonResult.failWithMessage errorMessage

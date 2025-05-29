@@ -1,4 +1,4 @@
-﻿namespace common.fsharp
+﻿namespace common
 
 open System
 open System.Text.Json

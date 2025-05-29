@@ -4,7 +4,7 @@ module Assertions
 open System.Runtime.CompilerServices
 open Faqt
 open Faqt.AssertionHelpers
-open common.fsharp
+open common
 
 [<Extension>]
 type JsonErrorAssertions =
