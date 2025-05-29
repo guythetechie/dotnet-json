@@ -6,60 +6,60 @@ namespace common;
 
 public static class JsonValueModule
 {
-    public static JsonResult<string> AsString(this JsonValue? jsonValue) =>
+    public static Result<string> AsString(this JsonValue? jsonValue) =>
         jsonValue?.GetValueKind() switch
         {
             JsonValueKind.String => jsonValue.GetStringValue() switch
             {
-                null => JsonResult.Fail<string>("JSON value has a null string."),
-                var stringValue => JsonResult.Succeed(stringValue)
+                null => Result.Success("JSON value has a null string."),
+                var stringValue => stringValue
             },
-            _ => JsonResult.Fail<string>("JSON value is not a string.")
+            _ => Error.From("JSON value is not a string.")
         };
 
     private static string? GetStringValue(this JsonValue? jsonValue) =>
         jsonValue?.GetValue<object>().ToString();
 
-    public static JsonResult<int> AsInt(this JsonValue? jsonValue)
+    public static Result<int> AsInt(this JsonValue? jsonValue)
     {
         var errorMessage = "JSON value is not an integer.";
 
         return jsonValue?.GetValueKind() switch
         {
             JsonValueKind.Number => int.TryParse(jsonValue.GetStringValue(), out var result)
-                                    ? JsonResult.Succeed(result)
-                                    : JsonResult.Fail<int>(errorMessage),
-            _ => JsonResult.Fail<int>(errorMessage)
+                                    ? Result.Success(result)
+                                    : Error.From(errorMessage),
+            _ => Error.From(errorMessage)
         };
     }
 
-    public static JsonResult<bool> AsBool(this JsonValue? jsonValue) =>
+    public static Result<bool> AsBool(this JsonValue? jsonValue) =>
         jsonValue?.GetValueKind() switch
         {
-            JsonValueKind.True => JsonResult.Succeed(true),
-            JsonValueKind.False => JsonResult.Succeed(false),
-            _ => JsonResult.Fail<bool>("JSON value is not a boolean.")
+            JsonValueKind.True => Result.Success(true),
+            JsonValueKind.False => false,
+            _ => Error.From("JSON value is not a boolean.")
         };
 
-    public static JsonResult<Guid> AsGuid(this JsonValue? jsonValue)
+    public static Result<Guid> AsGuid(this JsonValue? jsonValue)
     {
         var errorMessage = "JSON value is not a GUID.";
 
         return jsonValue.AsString()
                         .Bind(stringValue => Guid.TryParse(jsonValue.GetStringValue(), out var result)
-                                            ? JsonResult.Succeed(result)
-                                            : JsonResult.Fail<Guid>(errorMessage))
-                        .ReplaceError(errorMessage);
+                                                ? Result.Success(result)
+                                                : Error.From(errorMessage))
+                        .MapError(_ => errorMessage);
     }
 
-    public static JsonResult<Uri> AsAbsoluteUri(this JsonValue? jsonValue)
+    public static Result<Uri> AsAbsoluteUri(this JsonValue? jsonValue)
     {
         var errorMessage = "JSON value is not an absolute URI.";
 
         return jsonValue.AsString()
-                 .Bind(stringValue => Uri.TryCreate(jsonValue.GetStringValue(), UriKind.Absolute, out var result)
-                                        ? JsonResult.Succeed(result)
-                                        : JsonResult.Fail<Uri>(errorMessage))
-                 .ReplaceError(errorMessage);
+                        .Bind(stringValue => Uri.TryCreate(jsonValue.GetStringValue(), UriKind.Absolute, out var result)
+                                                ? Result.Success(result)
+                                                : Error.From(errorMessage))
+                        .MapError(_ => errorMessage);
     }
 }

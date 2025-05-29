@@ -11,18 +11,6 @@ open System.Text.Json.Nodes
 let private propertyNameGen =
     Gen.generateDefault<NonWhiteSpaceString> () |> Gen.map (fun value -> value.Get)
 
-let private generateJsonObjectWithProperty propertyValueGen =
-    gen {
-        let! propertyName = propertyNameGen
-        let! propertyValue = propertyValueGen
-        let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
-
-        return
-            {| PropertyName = propertyName
-               PropertyValue = propertyValue
-               JsonObject = jsonObject |}
-    }
-
 let nodesAreEqual (first: #JsonNode) (second: #JsonNode) =
     String.Equals(first.ToJsonString(), second.ToJsonString(), StringComparison.OrdinalIgnoreCase)
 
@@ -31,10 +19,14 @@ let nodeEquals node (value: obj) =
 
 [<Fact>]
 let ``getProperty fails if the property has a null value`` () =
-    let gen = generateJsonObjectWithProperty (Gen.constant null)
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName null)
+            return propertyName, jsonObject
+        }
 
-    Check.fromGen gen (fun x ->
-        let propertyName, jsonObject = x.PropertyName, x.JsonObject
+    Check.fromGen gen (fun (propertyName, jsonObject) ->
         let result = JsonObject.getProperty propertyName jsonObject
         result.Should().BeFailure())
 
@@ -53,22 +45,30 @@ let ``getProperty fails if the property is missing`` () =
 
 [<Fact>]
 let ``getProperty succeeds if the property exists`` () =
-    let gen = generateJsonObjectWithProperty Gen.jsonNode
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.jsonNode
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, propertyValue, jsonObject =
-            x.PropertyName, x.PropertyValue, x.JsonObject
+            return propertyName, propertyValue, jsonObject
+        }
 
+    Check.fromGen gen (fun (propertyName, propertyValue, jsonObject) ->
         let result = JsonObject.getProperty propertyName jsonObject
 
         result.Should().BeSuccess().That.Should().Be(propertyValue, nodesAreEqual))
 
 [<Fact>]
 let ``getOptionalProperty return None if the property has a null value`` () =
-    let gen = generateJsonObjectWithProperty (Gen.constant null)
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName null)
+            return propertyName, jsonObject
+        }
 
-    Check.fromGen gen (fun x ->
-        let propertyName, jsonObject = x.PropertyName, x.JsonObject
+    Check.fromGen gen (fun (propertyName, jsonObject) ->
         let result = JsonObject.getOptionalProperty propertyName jsonObject
         result.Should().BeNone())
 
@@ -87,180 +87,284 @@ let ``getOptionalProperty return None if the property is missing`` () =
 
 [<Fact>]
 let ``getOptionalProperty return Some if the property exists`` () =
-    let gen = generateJsonObjectWithProperty Gen.jsonNode
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.jsonNode
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, propertyValue, jsonObject =
-            x.PropertyName, x.PropertyValue, x.JsonObject
+            return propertyName, propertyValue, jsonObject
+        }
 
+    Check.fromGen gen (fun (propertyName, propertyValue, jsonObject) ->
         let result = JsonObject.getOptionalProperty propertyName jsonObject
 
         result.Should().BeSome().That.Should().Be(propertyValue, nodesAreEqual))
 
 [<Fact>]
 let ``getJsonObjectProperty fails if the property is not a JSON object`` () =
-    let gen = generateJsonObjectWithProperty Gen.JsonNode.nonJsonObject
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.JsonNode.nonJsonObject
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, jsonObject = x.PropertyName, x.JsonObject
+            return propertyName, jsonObject
+        }
+
+    Check.fromGen gen (fun (propertyName, jsonObject) ->
         let result = JsonObject.getJsonObjectProperty propertyName jsonObject
         result.Should().BeFailure())
 
 [<Fact>]
 let ``getJsonObjectProperty succeeds if the property is a JSON object`` () =
-    let gen = generateJsonObjectWithProperty Gen.JsonNode.jsonObject
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.JsonNode.jsonObject
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, propertyValue, jsonObject =
-            x.PropertyName, x.PropertyValue, x.JsonObject
+            return propertyName, propertyValue, jsonObject
+        }
 
+    Check.fromGen gen (fun (propertyName, propertyValue, jsonObject) ->
         let result = JsonObject.getJsonObjectProperty propertyName jsonObject
         result.Should().BeSuccess().That.Should().Be(propertyValue, nodesAreEqual))
 
 [<Fact>]
 let ``getJsonArrayProperty fails if the property is not a JSON array`` () =
-    let gen = generateJsonObjectWithProperty Gen.JsonNode.nonJsonArray
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.JsonNode.nonJsonArray
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, jsonObject = x.PropertyName, x.JsonObject
+            return propertyName, jsonObject
+        }
+
+    Check.fromGen gen (fun (propertyName, jsonObject) ->
         let result = JsonObject.getJsonArrayProperty propertyName jsonObject
         result.Should().BeFailure())
 
 [<Fact>]
 let ``getJsonArrayProperty succeeds if the property is a JSON array`` () =
-    let gen = generateJsonObjectWithProperty Gen.JsonNode.jsonArray
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.JsonNode.jsonArray
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, propertyValue, jsonObject =
-            x.PropertyName, x.PropertyValue, x.JsonObject
+            return propertyName, propertyValue, jsonObject
+        }
 
+    Check.fromGen gen (fun (propertyName, propertyValue, jsonObject) ->
         let result = JsonObject.getJsonArrayProperty propertyName jsonObject
         result.Should().BeSuccess().That.Should().Be(propertyValue, nodesAreEqual))
 
 [<Fact>]
 let ``getJsonValueProperty fails if the property is not a JSON value`` () =
-    let gen = generateJsonObjectWithProperty Gen.JsonNode.nonJsonValue
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.JsonNode.nonJsonValue
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, jsonObject = x.PropertyName, x.JsonObject
+            return propertyName, jsonObject
+        }
+
+    Check.fromGen gen (fun (propertyName, jsonObject) ->
         let result = JsonObject.getJsonValueProperty propertyName jsonObject
         result.Should().BeFailure())
 
 [<Fact>]
 let ``getJsonValue succeeds if the property is a JSON value`` () =
-    let gen = generateJsonObjectWithProperty Gen.JsonNode.jsonValue
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.JsonNode.jsonValue
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, propertyValue, jsonObject =
-            x.PropertyName, x.PropertyValue, x.JsonObject
+            return propertyName, propertyValue, jsonObject
+        }
 
+    Check.fromGen gen (fun (propertyName, propertyValue, jsonObject) ->
         let result = JsonObject.getJsonValueProperty propertyName jsonObject
         result.Should().BeSuccess().That.Should().Be(propertyValue, nodesAreEqual))
 
 [<Fact>]
 let ``getStringProperty fails if the property is not a string`` () =
-    let gen = generateJsonObjectWithProperty Gen.JsonValue.nonString
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.JsonValue.nonString |> Gen.toJsonNode
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, jsonObject = x.PropertyName, x.JsonObject
+            return propertyName, jsonObject
+        }
+
+    Check.fromGen gen (fun (propertyName, jsonObject) ->
         let result = JsonObject.getStringProperty propertyName jsonObject
         result.Should().BeFailure())
 
 [<Fact>]
 let ``getStringProperty succeeds if the property is a string`` () =
-    let gen = generateJsonObjectWithProperty Gen.JsonValue.string
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.JsonValue.string |> Gen.toJsonNode
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, propertyValue, jsonObject =
-            x.PropertyName, x.PropertyValue, x.JsonObject
+            return propertyName, propertyValue, jsonObject
+        }
 
+    Check.fromGen gen (fun (propertyName, propertyValue, jsonObject) ->
         let result = JsonObject.getStringProperty propertyName jsonObject
 
-        result.Should().BeSuccess().That.Should().Satisfy(fun value -> nodeEquals propertyValue value))
+        result
+            .Should()
+            .BeSuccess()
+            .That.Should()
+            .Satisfy(fun value -> nodeEquals propertyValue value))
 
 [<Fact>]
 let ``getAbsoluteUriProperty fails if the property is not an absolute URI`` () =
-    let gen = generateJsonObjectWithProperty Gen.JsonValue.nonAbsoluteUri
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.JsonValue.nonAbsoluteUri |> Gen.toJsonNode
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, jsonObject = x.PropertyName, x.JsonObject
+            return propertyName, jsonObject
+        }
+
+    Check.fromGen gen (fun (propertyName, jsonObject) ->
         let result = JsonObject.getAbsoluteUriProperty propertyName jsonObject
         result.Should().BeFailure())
 
 [<Fact>]
 let ``getAbsoluteUriProperty succeeds if the property is an absolute URI`` () =
-    let gen = generateJsonObjectWithProperty Gen.JsonValue.absoluteUri
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.JsonValue.absoluteUri |> Gen.toJsonNode
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, propertyValue, jsonObject =
-            x.PropertyName, x.PropertyValue, x.JsonObject
+            return propertyName, propertyValue, jsonObject
+        }
 
+    Check.fromGen gen (fun (propertyName, propertyValue, jsonObject) ->
         let result = JsonObject.getAbsoluteUriProperty propertyName jsonObject
 
-        result.Should().BeSuccess().That.Should().Satisfy(fun value -> nodeEquals propertyValue value))
+        result
+            .Should()
+            .BeSuccess()
+            .That.Should()
+            .Satisfy(fun value -> nodeEquals propertyValue value))
 
 [<Fact>]
 let ``getGuidProperty fails if the property is not a GUID`` () =
-    let gen = generateJsonObjectWithProperty Gen.JsonValue.nonGuid
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.JsonValue.nonGuid |> Gen.toJsonNode
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, jsonObject = x.PropertyName, x.JsonObject
+            return propertyName, jsonObject
+        }
+
+    Check.fromGen gen (fun (propertyName, jsonObject) ->
         let result = JsonObject.getGuidProperty propertyName jsonObject
         result.Should().BeFailure())
 
 [<Fact>]
 let ``getGuidProperty succeeds if the property is a GUID`` () =
-    let gen = generateJsonObjectWithProperty Gen.JsonValue.guid
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.JsonValue.guid |> Gen.toJsonNode
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, propertyValue, jsonObject =
-            x.PropertyName, x.PropertyValue, x.JsonObject
+            return propertyName, propertyValue, jsonObject
+        }
 
+    Check.fromGen gen (fun (propertyName, propertyValue, jsonObject) ->
         let result = JsonObject.getGuidProperty propertyName jsonObject
 
-        result.Should().BeSuccess().That.Should().Satisfy(fun value -> nodeEquals propertyValue value))
+        result
+            .Should()
+            .BeSuccess()
+            .That.Should()
+            .Satisfy(fun value -> nodeEquals propertyValue value))
 
 [<Fact>]
 let ``getBoolProperty fails if the property is not a boolean`` () =
-    let gen = generateJsonObjectWithProperty Gen.JsonValue.nonBool
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.JsonValue.nonBool |> Gen.toJsonNode
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, jsonObject = x.PropertyName, x.JsonObject
+            return propertyName, jsonObject
+        }
+
+    Check.fromGen gen (fun (propertyName, jsonObject) ->
         let result = JsonObject.getBoolProperty propertyName jsonObject
         result.Should().BeFailure())
 
 [<Fact>]
 let ``getBoolProperty succeeds if the property is a boolean`` () =
-    let gen = generateJsonObjectWithProperty Gen.JsonValue.bool
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.JsonValue.bool |> Gen.toJsonNode
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, propertyValue, jsonObject =
-            x.PropertyName, x.PropertyValue, x.JsonObject
+            return propertyName, propertyValue, jsonObject
+        }
 
+    Check.fromGen gen (fun (propertyName, propertyValue, jsonObject) ->
         let result = JsonObject.getBoolProperty propertyName jsonObject
 
-        result.Should().BeSuccess().That.Should().Satisfy(fun value -> nodeEquals propertyValue value))
+        result
+            .Should()
+            .BeSuccess()
+            .That.Should()
+            .Satisfy(fun value -> nodeEquals propertyValue value))
 
 [<Fact>]
 let ``getIntProperty fails if the property is not an integer`` () =
-    let gen = generateJsonObjectWithProperty Gen.JsonValue.nonInteger
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.JsonValue.nonInteger |> Gen.toJsonNode
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, jsonObject = x.PropertyName, x.JsonObject
+            return propertyName, jsonObject
+        }
+
+    Check.fromGen gen (fun (propertyName, jsonObject) ->
         let result = JsonObject.getIntProperty propertyName jsonObject
         result.Should().BeFailure())
 
 [<Fact>]
 let ``getIntProperty succeeds if the property is an integer`` () =
-    let gen = generateJsonObjectWithProperty Gen.JsonValue.integer
+    let gen =
+        gen {
+            let! propertyName = propertyNameGen
+            let! propertyValue = Gen.JsonValue.integer |> Gen.toJsonNode
+            let! jsonObject = Gen.jsonObject |> Gen.map (JsonObject.setProperty propertyName propertyValue)
 
-    Check.fromGen gen (fun x ->
-        let propertyName, propertyValue, jsonObject =
-            x.PropertyName, x.PropertyValue, x.JsonObject
+            return propertyName, propertyValue, jsonObject
+        }
 
+    Check.fromGen gen (fun (propertyName, propertyValue, jsonObject) ->
         let result = JsonObject.getIntProperty propertyName jsonObject
 
-        result.Should().BeSuccess().That.Should().Satisfy(fun value -> nodeEquals propertyValue value))
+        result
+            .Should()
+            .BeSuccess()
+            .That.Should()
+            .Satisfy(fun value -> nodeEquals propertyValue value))
 
 [<Fact>]
 let ``setProperty sets the property value`` () =
@@ -275,4 +379,4 @@ let ``setProperty sets the property value`` () =
 
     Check.fromGen gen (fun (propertyName, propertyValue, jsonObject) ->
         let updatedJsonObject = JsonObject.setProperty propertyName propertyValue jsonObject
-        updatedJsonObject.Should().ContainKey(propertyName).WhoseValue.Value.Should().Be(propertyValue, nodesAreEqual))
+        updatedJsonObject[propertyName].Should().Be(propertyValue, nodesAreEqual))

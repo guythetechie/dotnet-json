@@ -1,8 +1,6 @@
 ﻿[<RequireQualifiedAccess>]
 module common.JsonValue
 
-#nowarn 3265
-
 open System
 open System.Text.Json.Nodes
 open System.Text.Json
@@ -29,23 +27,23 @@ let asAbsoluteUri jsonValue =
     asString jsonValue
     |> bind (fun stringValue ->
         match Uri.TryCreate(stringValue, UriKind.Absolute) with
-        | true, uri ->
-            match uri with
-            | Null -> JsonResult.failWithMessage "JSON value URI is null."
-            | NonNull nonNullUri ->
-                if nonNullUri.HostNameType = UriHostNameType.Unknown then
-                    JsonResult.failWithMessage errorMessage
-                else
-                    JsonResult.succeed nonNullUri
+        | true, uri when
+            (match uri with
+             | Null -> false
+             | NonNull nonNullUri -> nonNullUri.HostNameType <> UriHostNameType.Unknown)
+            ->
+            JsonResult.succeed uri
         | _ -> JsonResult.failWithMessage errorMessage)
     |> JsonResult.setErrorMessage errorMessage
 
 let asGuid jsonValue =
+    let errorMessage = "JSON value is not a GUID."
+
     asString jsonValue
     |> bind (fun stringValue ->
         match Guid.TryParse(stringValue) with
         | true, guid -> JsonResult.succeed guid
-        | _ -> JsonResult.failWithMessage "JSON value is not a GUID.")
+        | _ -> JsonResult.failWithMessage errorMessage)
 
 let asBool (jsonValue: JsonValue) =
     match jsonValue.GetValueKind() with
@@ -56,13 +54,9 @@ let asBool (jsonValue: JsonValue) =
 let asDateTimeOffset (jsonValue: JsonValue) =
     let errorMessage = "JSON value is not a date time offset."
 
-    match jsonValue.TryGetValue<DateTimeOffset>() with
-    | true, dateTimeOffset -> JsonResult.succeed dateTimeOffset
-    | _ ->
-        monad {
-            let! stringValue = asString jsonValue |> JsonResult.setErrorMessage errorMessage
-
-            match DateTimeOffset.TryParse(stringValue) with
-            | true, dateTimeOffset -> return dateTimeOffset
-            | _ -> return! JsonResult.failWithMessage errorMessage
-        }
+    match asString jsonValue with
+    | JsonResult.Success stringValue ->
+        match DateTimeOffset.TryParse(stringValue) with
+        | true, dateTimeOffset -> JsonResult.succeed dateTimeOffset
+        | _ -> JsonResult.failWithMessage errorMessage
+    | JsonResult.Failure _ -> JsonResult.failWithMessage errorMessage

@@ -15,35 +15,11 @@ let private getResultSeq toJsonResult toErrorMessage (jsonArray: JsonArray) =
         let replaceErrorMessage = toErrorMessage index |> JsonResult.setErrorMessage
         toJsonResult node |> replaceErrorMessage)
 
-let asJsonObjects jsonArray =
+let getJsonObjects jsonArray =
     getResultSeq JsonNode.asJsonObject (fun index -> $"Element at index {index} is not a JSON object.") jsonArray
 
-let asJsonArrays jsonArray =
+let getJsonArrays jsonArray =
     getResultSeq JsonNode.asJsonArray (fun index -> $"Element at index {index} is not a JSON array.") jsonArray
 
-let asJsonValues jsonArray =
-    getResultSeq JsonNode.asJsonValue (fun index -> $"Element at index {index} is not a JSON value.") jsonArray
-
-let getJsonObjects jsonArray =
-    jsonArray
-    |> toSeq
-    |> Seq.choose (fun node ->
-        match node with
-        | :? JsonObject as jsonObject -> Some jsonObject
-        | _ -> None)
-
-let getJsonArrays jsonArray =
-    jsonArray
-    |> toSeq
-    |> Seq.choose (fun node ->
-        match node with
-        | :? JsonArray as jsonArray -> Some jsonArray
-        | _ -> None)
-
 let getJsonValues jsonArray =
-    jsonArray
-    |> toSeq
-    |> Seq.choose (fun node ->
-        match node with
-        | :? JsonValue as jsonValue -> Some jsonValue
-        | _ -> None)
+    getResultSeq JsonNode.asJsonValue (fun index -> $"Element at index {index} is not a JSON value.") jsonArray

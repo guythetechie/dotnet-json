@@ -1,14 +1,7 @@
 ﻿using CsCheck;
-using FluentAssertions;
 using System;
-using System.ComponentModel.DataAnnotations;
-using System.IO;
-using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace common.tests;
 
@@ -109,50 +102,6 @@ public class JsonNodeTests
     }
 
     [Fact]
-    public async Task FromStream_fails_if_the_stream_is_null()
-    {
-        var stream = (Stream?)null;
-        var result = await JsonNodeModule.From(stream, cancellationToken: CancellationToken.None);
-        result.Should().BeError();
-    }
-
-    [Fact]
-    public async Task FromStream_succeeds_if_the_stream_is_valid_json()
-    {
-        var generator = from json in JsonNodeGenerator.Value
-                        select json.ToJsonString();
-
-        await generator.SampleAsync(async input =>
-        {
-            using var stream = BinaryData.FromString(input).ToStream();
-            var result = await JsonNodeModule.From(stream, cancellationToken: CancellationToken.None);
-            result.Should().BeSuccess();
-        });
-    }
-
-    [Fact]
-    public void FromBinaryData_fails_if_the_data_is_null()
-    {
-        var data = (BinaryData?)null;
-        var result = JsonNodeModule.From(data);
-        result.Should().BeError();
-    }
-
-    [Fact]
-    public void FromBinaryData_succeeds_if_the_data_is_valid_json()
-    {
-        var generator = from json in JsonNodeGenerator.Value
-                        let text = json.ToJsonString()
-                        select BinaryData.FromString(text);
-
-        generator.Sample(data =>
-        {
-            var result = JsonNodeModule.From(data);
-            result.Should().BeSuccess();
-        });
-    }
-
-    [Fact]
     public void Deserialize_fails_if_the_data_is_null()
     {
         var data = (BinaryData?)null;
@@ -182,20 +131,6 @@ public class JsonNodeTests
         {
             var data = BinaryData.FromString(node.ToJsonString());
             var result = JsonNodeModule.Deserialize<JsonNode>(data);
-            result.Should().BeSuccess().Which.Should().BeEquivalentTo(node);
-        });
-    }
-
-    [Fact]
-    public async Task ToStream_serializes_the_node_to_a_stream()
-    {
-        var generator = JsonNodeGenerator.Value;
-
-        await generator.SampleAsync(async node =>
-        {
-            using var stream = JsonNodeModule.ToStream(node);
-
-            var result = await JsonNodeModule.From(stream);
             result.Should().BeSuccess().Which.Should().BeEquivalentTo(node);
         });
     }

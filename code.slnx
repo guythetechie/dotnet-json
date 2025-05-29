@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+  </Folder>
+  <Folder Name="/csharp/">
+    <Project Path="src/csharp/common.csproj" />
+    <Project Path="tests/csharp/common.tests.csproj" />
+  </Folder>
+  <Folder Name="/fsharp/">
+    <Project Path="src/fsharp/common.fsproj" />
+    <Project Path="tests/fsharp/common.tests.fsproj" />
+  </Folder>
+</Solution>

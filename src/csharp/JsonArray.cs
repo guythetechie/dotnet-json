@@ -1,5 +1,4 @@
-﻿using LanguageExt;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -16,35 +15,32 @@ public static class JsonArrayModule
 
     public static ValueTask<JsonArray> ToJsonArray(this IAsyncEnumerable<JsonNode?> nodes, CancellationToken cancellationToken) =>
         nodes.AggregateAsync(new JsonArray(),
-                                (array, node) =>
-                                {
-                                    array.Add(node);
-                                    return array;
-                                },
-                                cancellationToken);
+                            (array, node) =>
+                            {
+                                array.Add(node);
+                                return array;
+                            },
+                            cancellationToken);
 
-    public static JsonResult<ImmutableArray<JsonObject>> GetJsonObjects(this JsonArray jsonArray) =>
+    public static Result<ImmutableArray<JsonObject>> GetJsonObjects(this JsonArray jsonArray) =>
         jsonArray.GetElements(jsonNode => jsonNode.AsJsonObject(),
-                              index => JsonError.From($"Node at index {index} is not a JSON object."));
+                              index => Error.From($"Node at index {index} is not a JSON object."));
 
-    private static JsonResult<ImmutableArray<T>> GetElements<T>(this JsonArray jsonArray, Func<JsonNode?, JsonResult<T>> selector, Func<int, JsonError> errorFromIndex)
+    public static Result<ImmutableArray<T>> GetElements<T>(this JsonArray jsonArray, Func<JsonNode?, Result<T>> selector, Func<int, Error> errorFromIndex)
     {
         return jsonArray.Select((node, index) => (node, index))
-                        .AsIterable()
-                        .Traverse(x => nodeToElement(x.node, x.index))
-                        .Map(iterable => iterable.ToImmutableArray())
-                        .As();
+                        .Traverse(x => nodeToElement(x.node, x.index), CancellationToken.None);
 
-        JsonResult<T> nodeToElement(JsonNode? node, int index) =>
+        Result<T> nodeToElement(JsonNode? node, int index) =>
             selector(node)
-                .ReplaceError(_ => errorFromIndex(index));
+                .MapError(error => errorFromIndex(index));
     }
 
-    public static JsonResult<ImmutableArray<JsonArray>> GetJsonArrays(this JsonArray jsonArray) =>
+    public static Result<ImmutableArray<JsonArray>> GetJsonArrays(this JsonArray jsonArray) =>
         jsonArray.GetElements(jsonNode => jsonNode.AsJsonArray(),
-                              index => JsonError.From($"Node at index {index} is not a JSON array."));
+                              index => Error.From($"Node at index {index} is not a JSON array."));
 
-    public static JsonResult<ImmutableArray<JsonValue>> GetJsonValues(this JsonArray jsonArray) =>
+    public static Result<ImmutableArray<JsonValue>> GetJsonValues(this JsonArray jsonArray) =>
         jsonArray.GetElements(jsonNode => jsonNode.AsJsonValue(),
-                              index => JsonError.From($"Node at index {index} is not a JSON value."));
+                              index => Error.From($"Node at index {index} is not a JSON value."));
 }

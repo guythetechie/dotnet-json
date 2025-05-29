@@ -1,5 +1,4 @@
-﻿using LanguageExt;
-using System;
+﻿using System;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -7,80 +6,104 @@ namespace common;
 
 public static class JsonObjectModule
 {
-    public static JsonResult<JsonNode> GetProperty(this JsonObject? jsonObject, string propertyName) =>
+    public static Result<JsonNode> GetProperty(this JsonObject? jsonObject, string propertyName) =>
         jsonObject switch
         {
-            null => JsonResult.Fail<JsonNode>("JSON object is null."),
+            null => Result.Error<JsonNode>("JSON object is null."),
             _ => jsonObject.TryGetPropertyValue(propertyName, out var jsonNode)
                     ? jsonNode switch
                     {
-                        null => JsonResult.Fail<JsonNode>($"Property '{propertyName}' is null."),
-                        _ => JsonResult.Succeed(jsonNode)
+                        null => Result.Error<JsonNode>($"Property '{propertyName}' is null."),
+                        _ => jsonNode
                     }
-                    : JsonResult.Fail<JsonNode>($"JSON object does not have a property named '{propertyName}'.")
+                    : Error.From($"JSON object does not have a property named '{propertyName}'.")
         };
 
     public static Option<JsonNode> GetOptionalProperty(this JsonObject? jsonObject, string propertyName) =>
         jsonObject.GetProperty(propertyName)
                   .Match(Option<JsonNode>.Some,
-                         _ => Option<JsonNode>.None);
+                         _ => Option.None);
 
-    public static JsonResult<JsonObject> GetJsonObjectProperty(this JsonObject? jsonObject, string propertyName) =>
-        jsonObject.GetProperty(propertyName,
-                               jsonNode => jsonNode.AsJsonObject());
-
-    private static JsonResult<T> GetProperty<T>(this JsonObject? jsonObject, string propertyName, Func<JsonNode, JsonResult<T>> selector) =>
+    public static Result<T> GetProperty<T>(this JsonObject? jsonObject, string propertyName, Func<JsonNode, Result<T>> selector) =>
         jsonObject.GetProperty(propertyName)
                   .Bind(selector)
                   .AddPropertyNameToErrorMessage(propertyName);
 
-    private static JsonResult<T> AddPropertyNameToErrorMessage<T>(this JsonResult<T> result, string propertyName)
-    {
-        return result.ReplaceError(replaceError);
+    public static Result<JsonObject> GetJsonObjectProperty(this JsonObject? jsonObject, string propertyName) =>
+        jsonObject.GetProperty(propertyName,
+                               jsonNode => jsonNode.AsJsonObject());
 
-        JsonError replaceError(JsonError error) =>
-            JsonError.From($"Property '{propertyName}' is invalid. {error.Message}");
+    private static Result<T> AddPropertyNameToErrorMessage<T>(this Result<T> result, string propertyName)
+    {
+        return result.MapError(replaceError);
+
+        Error replaceError(Error error) =>
+            Error.From($"Property '{propertyName}' is invalid. {error}");
     }
 
-    public static JsonResult<JsonArray> GetJsonArrayProperty(this JsonObject? jsonObject, string propertyName) =>
+    public static Result<JsonArray> GetJsonArrayProperty(this JsonObject? jsonObject, string propertyName) =>
         jsonObject.GetProperty(propertyName,
                                jsonNode => jsonNode.AsJsonArray());
 
-    public static JsonResult<JsonValue> GetJsonValueProperty(this JsonObject? jsonObject, string propertyName) =>
+    public static Result<JsonValue> GetJsonValueProperty(this JsonObject? jsonObject, string propertyName) =>
         jsonObject.GetProperty(propertyName,
                                jsonNode => jsonNode.AsJsonValue());
 
-    public static JsonResult<string> GetStringProperty(this JsonObject? jsonObject, string propertyName) =>
+    public static Result<string> GetStringProperty(this JsonObject? jsonObject, string propertyName) =>
         jsonObject.GetProperty(propertyName,
                                jsonNode => jsonNode.AsJsonValue()
                                                    .Bind(jsonValue => jsonValue.AsString()));
 
-    public static JsonResult<int> GetIntProperty(this JsonObject? jsonObject, string propertyName) =>
+    public static Result<int> GetIntProperty(this JsonObject? jsonObject, string propertyName) =>
         jsonObject.GetProperty(propertyName,
                                jsonNode => jsonNode.AsJsonValue()
                                                    .Bind(jsonValue => jsonValue.AsInt()));
 
-    public static JsonResult<bool> GetBoolProperty(this JsonObject? jsonObject, string propertyName) =>
+    public static Result<bool> GetBoolProperty(this JsonObject? jsonObject, string propertyName) =>
         jsonObject.GetProperty(propertyName,
                                jsonNode => jsonNode.AsJsonValue()
                                                    .Bind(jsonValue => jsonValue.AsBool()));
 
-    public static JsonResult<Guid> GetGuidProperty(this JsonObject? jsonObject, string propertyName) =>
+    public static Result<Guid> GetGuidProperty(this JsonObject? jsonObject, string propertyName) =>
         jsonObject.GetProperty(propertyName,
                                jsonNode => jsonNode.AsJsonValue()
                                                    .Bind(jsonValue => jsonValue.AsGuid()));
 
-    public static JsonResult<Uri> GetAbsoluteUriProperty(this JsonObject? jsonObject, string propertyName) =>
+    public static Result<Uri> GetAbsoluteUriProperty(this JsonObject? jsonObject, string propertyName) =>
         jsonObject.GetProperty(propertyName,
                                jsonNode => jsonNode.AsJsonValue()
                                                    .Bind(jsonValue => jsonValue.AsAbsoluteUri()));
 
-    public static JsonObject SetProperty(this JsonObject jsonObject, string propertyName, JsonNode? propertyValue)
+    /// <summary>
+    /// Sets a property in the JSON object, leaving the original object unchanged and returning a new object.
+    /// To mutate the original object (e.g. for performance reasons), set <paramref name="mutateOriginal"/> to true.
+    /// </summary>
+    public static JsonObject SetProperty(this JsonObject jsonObject, string propertyName, JsonNode? propertyValue, bool mutateOriginal = false)
     {
-        jsonObject[propertyName] = propertyValue;
-        return jsonObject;
+        var newJson = mutateOriginal
+                        ? jsonObject
+                        : jsonObject.DeepClone().AsObject();
+
+        newJson[propertyName] = propertyValue;
+
+        return newJson;
     }
 
-    public static JsonResult<JsonObject> ToJsonObject(BinaryData? data, JsonSerializerOptions? options = default) =>
+    /// <summary>
+    /// Removes a property from the JSON object, leaving the original object unchanged and returning a new object.
+    /// To mutate the original object (e.g. for performance reasons), set <paramref name="mutateOriginal"/> to true.
+    /// </summary>
+    public static JsonObject RemoveProperty(this JsonObject jsonObject, string propertyName, bool mutateOriginal = false)
+    {
+        var newJson = mutateOriginal
+                        ? jsonObject
+                        : jsonObject.DeepClone().AsObject();
+
+        newJson.Remove(propertyName);
+
+        return newJson;
+    }
+
+    public static Result<JsonObject> ToJsonObject(BinaryData? data, JsonSerializerOptions? options = default) =>
         JsonNodeModule.Deserialize<JsonObject>(data, options);
 }

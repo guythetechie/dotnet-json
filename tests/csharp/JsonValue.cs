@@ -1,6 +1,5 @@
 ﻿using CsCheck;
 using FluentAssertions;
-using System.ComponentModel.Design;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;

@@ -27,26 +27,15 @@ type JsonResultAssertions =
         t.Subject
         |> JsonResult.map (fun a -> AndDerived(t, a))
         |> JsonResult.defaultWith (fun error ->
-            t.With("But was", "Failure").With("Error message", JsonError.getMessage error).Fail(because))
+            t
+                .With("But was", "Failure")
+                .With("Error message", JsonError.getMessage error)
+                .Fail(because))
 
     [<Extension>]
     static member BeFailure<'a>(t: Testable<JsonResult<'a>>, ?because) : AndDerived<JsonResult<'a>, JsonError> =
-        use _ = t.Assert()
+        let _ = t.Assert()
 
         t.Subject
         |> JsonResult.map (fun a -> t.With("But was", "Success").With("Value", a).Fail(because))
         |> JsonResult.defaultWith (fun error -> AndDerived(t, error))
-
-[<Extension>]
-type SeqAssertions =
-    [<Extension>]
-    static member HaveSameCountAs<'a, 'b>(t: Testable<seq<'a>>, other: seq<'b>, ?because) : And<seq<'a>> =
-        use _ = t.Assert()
-
-        let actualCount = Seq.length t.Subject
-        let expectedCount = Seq.length other
-
-        if actualCount <> expectedCount then
-            t.With("Expected", expectedCount).With("But was", actualCount).Fail(because)
-        else
-            And(t)
