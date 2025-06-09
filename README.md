@@ -87,6 +87,7 @@ var failingResult = GetRoles(client, goodUri, cancellationToken)
 | JsonNodeModule | [`Deserialize<T>(BinaryData?, JsonSerializerOptions?)`](#deserializetbinarydata-data-jsonserializeroptions-options--default) | Deserializes binary data to a specific type |
 | JsonNodeModule | [`ToStream(JsonNode, JsonSerializerOptions?)`](#tostreamjsonnode-node-jsonserializeroptions-options--default) | Converts a `JsonNode` to a stream |
 | JsonObjectModule | [`GetProperty(this JsonObject?, string)`](#getpropertythis-jsonobject-jsonobject-string-propertyname) | Gets a property from a JSON object |
+| JsonObjectModule | [`GetProperty<T>(this JsonObject?, string, Func<JsonNode, Result<T>>)`](#getpropertytthis-jsonobject-jsonobject-string-propertyname-funcjsonnode-resultt-selector) | Gets and transforms a property from a JSON object using a selector function |
 | JsonObjectModule | [`GetOptionalProperty(this JsonObject?, string)`](#getoptionalpropertythis-jsonobject-jsonobject-string-propertyname) | Gets an optional property from a JSON object |
 | JsonObjectModule | [`GetJsonObjectProperty(this JsonObject?, string)`](#getjsonobjectpropertythis-jsonobject-jsonobject-string-propertyname) | Gets a JSON object property from a JSON object |
 | JsonObjectModule | [`GetJsonArrayProperty(this JsonObject?, string)`](#getjsonarraypropertythis-jsonobject-jsonobject-string-propertyname) | Gets a JSON array property from a JSON object |
@@ -106,6 +107,7 @@ var failingResult = GetRoles(client, goodUri, cancellationToken)
 | JsonValueModule | [`AsAbsoluteUri(this JsonValue?)`](#asabsoluteurithis-jsonvalue-jsonvalue) | Converts a JSON value to an absolute URI |
 | JsonArrayModule | [`ToJsonArray(this IEnumerable<JsonNode?>)`](#tojsonarraythis-ienumerablejsonnode-nodes) | Creates a JSON array from an enumerable of JSON nodes |
 | JsonArrayModule | [`ToJsonArray(this IAsyncEnumerable<JsonNode?>, CancellationToken)`](#tojsonarraythis-iasyncenumerablejsonnode-nodes-cancellationtoken-cancellationtoken) | Asynchronously creates a JSON array from an async enumerable |
+| JsonArrayModule | [`GetElements<T>(this JsonArray, Func<JsonNode?, Result<T>>, Func<int, Error>)`](#getelementstthis-jsonarray-jsonarray-funcjsonnode-resultt-selector-funcint-error-errorfromindex) | Extracts elements from a JSON array using a selector function |
 | JsonArrayModule | [`GetJsonObjects(this JsonArray)`](#getjsonobjectsthis-jsonarray-jsonarray) | Gets all elements as JSON objects from a JSON array |
 | JsonArrayModule | [`GetJsonArrays(this JsonArray)`](#getjsonarraysthis-jsonarray-jsonarray) | Gets all elements as JSON arrays from a JSON array |
 | JsonArrayModule | [`GetJsonValues(this JsonArray)`](#getjsonvaluesthis-jsonarray-jsonarray) | Gets all elements as JSON values from a JSON array |
@@ -220,6 +222,25 @@ var result = obj.GetOptionalProperty("name");
 
 var missingResult = obj.GetOptionalProperty("missing");
 // Returns: None
+```
+
+#### `GetProperty<T>(this JsonObject? jsonObject, string propertyName, Func<JsonNode, Result<T>> selector)`
+
+Gets and transforms a property from a JSON object using a selector function. This method provides enhanced error context by including the property name in error messages.
+
+```csharp
+var obj = JsonNode.Parse("""{"count": "42"}""").AsObject();
+
+// Transform string to integer
+var result = obj.GetProperty("count", node => node.AsJsonValue().Bind(v => v.AsInt()));
+// Returns: Success(42)
+
+var invalidObj = JsonNode.Parse("""{"count": "invalid"}""").AsObject();
+var errorResult = invalidObj.GetProperty("count", node => node.AsJsonValue().Bind(v => v.AsInt()));
+// Returns: Error("Property 'count' is invalid. JSON value is not an integer.")
+
+// Custom transformation
+var upperResult = obj.GetProperty("name", node => node.AsJsonValue().Bind(v => v.AsString().Map(s => s.ToUpper())));
 ```
 
 #### `GetJsonObjectProperty(this JsonObject? jsonObject, string propertyName)`
@@ -439,6 +460,36 @@ async IAsyncEnumerable<JsonNode?> GetNodesAsync()
 
 var array = await GetNodesAsync().ToJsonArray(CancellationToken.None);
 // Returns: JsonArray containing [1, 2]
+```
+
+#### `GetElements<T>(this JsonArray jsonArray, Func<JsonNode?, Result<T>> selector, Func<int, Error> errorFromIndex)`
+
+Extracts elements from a JSON array using a selector function, collecting successes or aggregating errors. This is the foundation method that other specialized extraction methods build upon.
+
+```csharp
+var array = JsonNode.Parse("""["1", "2", "invalid", "4"]""").AsArray();
+
+// Extract as integers with custom error messages
+var result = array.GetElements(
+    node => node.AsJsonValue().Bind(v => v.AsInt()),
+    index => Error.From($"Element at position {index} is not a valid integer")
+);
+// Returns: Error with details about which elements failed
+
+var validArray = JsonNode.Parse("""["1", "2", "3"]""").AsArray();
+var successResult = validArray.GetElements(
+    node => node.AsJsonValue().Bind(v => v.AsInt()),
+    index => Error.From($"Invalid at {index}")
+);
+// Returns: Success(ImmutableArray<int> [1, 2, 3])
+
+// Custom transformations
+var stringArray = JsonNode.Parse("""["hello", "world"]""").AsArray();
+var upperResult = stringArray.GetElements(
+    node => node.AsJsonValue().Bind(v => v.AsString().Map(s => s.ToUpper())),
+    index => Error.From($"Not a string at {index}")
+);
+// Returns: Success(ImmutableArray<string> ["HELLO", "WORLD"])
 ```
 
 #### `GetJsonObjects(this JsonArray jsonArray)`
