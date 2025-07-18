@@ -109,6 +109,57 @@ public static class JsonNodeModule
     }
 
     /// <summary>
+    /// Serializes an object to a <see cref="JsonNode"/>.
+    /// </summary>
+    /// <typeparam name="T">The type of the object to serialize.</typeparam>
+    /// <param name="data">The object to serialize.</param>
+    /// <param name="options">Serializer options.</param>
+    /// <returns>Success with the serialized <see cref="JsonNode"/>, or error if serialization fails.</returns>
+    public static Result<JsonNode> From<T>(T? data, JsonSerializerOptions? options = default)
+    {
+        try
+        {
+            return JsonSerializer.SerializeToNode(data, options) switch
+            {
+                null => Error.From("Serialization returned a null result."),
+                var jsonNode => jsonNode
+            };
+        }
+        catch (JsonException exception)
+        {
+            return Error.From(exception);
+        }
+    }
+
+    /// <summary>
+    /// Deserializes a <see cref="JsonNode"/> into a strongly-typed object.
+    /// </summary>
+    /// <typeparam name="T">The type to deserialize into.</typeparam>
+    /// <param name="node">The <see cref="JsonNode"/> to deserialize.</param>
+    /// <param name="options">Serializer options. Defaults to <see cref="JsonSerializerOptions.Web"/> if null.</param>
+    /// <returns>Success with the deserialized object, or error if deserialization fails.</returns>
+    public static Result<T> To<T>(JsonNode? node, JsonSerializerOptions? options = default)
+    {
+        if (node is null)
+        {
+            return Error.From("JSON is null.");
+        }
+
+        try
+        {
+            return node.Deserialize<T>(options ?? JsonSerializerOptions.Web) switch
+            {
+                null => Error.From("Deserialization returned a null result."),
+                var t => t
+            };
+        }
+        catch (JsonException exception)
+        {
+            return Error.From(exception);
+        }
+    }
+
+    /// <summary>
     /// Deserializes JSON binary data into a strongly-typed object.
     /// </summary>
     /// <typeparam name="T">The type to deserialize into.</typeparam>

@@ -81,6 +81,8 @@ var failingResult = GetRoles(client, goodUri, cancellationToken)
 |-------|--------|-------------|
 | JsonNodeModule | [`From(BinaryData?, JsonNodeOptions?)`](#frombinarydata-data-jsonnodeoptions-options--default) | Parses a `JsonNode` from binary data |
 | JsonNodeModule | [`From(Stream?, JsonNodeOptions?, JsonDocumentOptions, CancellationToken)`](#fromstream-data-jsonnodeoptions-nodeoptions--default-jsondocumentoptions-documentoptions--default-cancellationtoken-cancellationtoken--default) | Asynchronously parses a `JsonNode` from a stream |
+| JsonNodeModule | [`From<T>(T?, JsonSerializerOptions?)`](#fromtt-data-jsonserializeroptions-options--default) | Serializes an object to a `JsonNode` |
+| JsonNodeModule | [`To<T>(JsonNode?, JsonSerializerOptions?)`](#tothis-jsonnode-jsonserializeroptions-options--default) | Deserializes a `JsonNode` into a strongly-typed object |
 | JsonNodeModule | [`AsJsonObject(this JsonNode?)`](#asjsonobjectthis-jsonnode-node) | Converts a `JsonNode` to a `JsonObject` |
 | JsonNodeModule | [`AsJsonArray(this JsonNode?)`](#asjsonarraythis-jsonnode-node) | Converts a `JsonNode` to a `JsonArray` |
 | JsonNodeModule | [`AsJsonValue(this JsonNode?)`](#asjsonvaluethis-jsonnode-node) | Converts a `JsonNode` to a `JsonValue` |
@@ -138,6 +140,34 @@ Asynchronously parses a `JsonNode` from a stream.
 using var stream = new MemoryStream(Encoding.UTF8.GetBytes("""{"data": "value"}"""));
 var result = await JsonNodeModule.From(stream);
 // Returns: Success(JsonNode)
+```
+
+#### `From<T>(T? data, JsonSerializerOptions? options = default)`
+
+Serializes an object to a `JsonNode`.
+
+```csharp
+var person = new { Name = "John", Age = 30 };
+var result = JsonNodeModule.From(person);
+// Returns: Success(JsonNode representing the object)
+
+var nullData = (object?)null;
+var errorResult = JsonNodeModule.From(nullData);
+// Returns: Error("Serialization returned a null result.")
+```
+
+#### `To<T>(JsonNode? node, JsonSerializerOptions? options = default)`
+
+Deserializes a `JsonNode` into a strongly-typed object.
+
+```csharp
+var node = JsonNode.Parse("""{"Name": "John", "Age": 30}""");
+var result = JsonNodeModule.To<Person>(node);
+// Returns: Success(Person instance)
+
+var invalidNode = JsonNode.Parse("""{"InvalidProperty": "value"}""");
+var errorResult = JsonNodeModule.To<Person>(invalidNode);
+// Returns: Error with deserialization details
 ```
 
 #### `AsJsonObject(this JsonNode? node)`
