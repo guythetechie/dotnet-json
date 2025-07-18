@@ -68,7 +68,7 @@ public static class JsonNodeModule
         {
             return data switch
             {
-                null => Result.Error<JsonNode>("Binary data is null."),
+                null => Result.Error<JsonNode>("Stream is null."),
                 _ => await JsonNode.ParseAsync(data, nodeOptions, documentOptions, cancellationToken) switch
                 {
                     null => Error.From("Deserialization returned a null result."),
