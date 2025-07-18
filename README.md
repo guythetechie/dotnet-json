@@ -101,6 +101,7 @@ var failingResult = GetRoles(client, goodUri, cancellationToken)
 | JsonObjectModule | [`GetAbsoluteUriProperty(this JsonObject?, string)`](#getabsoluteuripropertythis-jsonobject-jsonobject-string-propertyname) | Gets an absolute URI property from a JSON object |
 | JsonObjectModule | [`SetProperty(this JsonObject, string, JsonNode?, bool)`](#setpropertythis-jsonobject-jsonobject-string-propertyname-jsonnode-propertyvalue-bool-mutateoriginal--false) | Sets a property on a JSON object |
 | JsonObjectModule | [`RemoveProperty(this JsonObject, string, bool)`](#removepropertythis-jsonobject-jsonobject-string-propertyname-bool-mutateoriginal--false) | Removes a property from a JSON object |
+| JsonObjectModule | [`MergeWith(this JsonObject, JsonObject?, bool)`](#mergewiththis-jsonobject-original-jsonobject-other-bool-mutateoriginal--false) | Merges another JSON object into the current one |
 | JsonObjectModule | [`From(BinaryData?, JsonSerializerOptions?)`](#frombinarydata-data-jsonserializeroptions-options--default-1) | Converts binary data to a JSON object |
 | JsonValueModule | [`AsString(this JsonValue?)`](#asstringthis-jsonvalue-jsonvalue) | Converts a JSON value to a string |
 | JsonValueModule | [`AsInt(this JsonValue?)`](#asintthis-jsonvalue-jsonvalue) | Converts a JSON value to an integer |
@@ -389,6 +390,20 @@ var updated = obj.RemoveProperty("age");
 
 var mutated = obj.RemoveProperty("age", mutateOriginal: true);
 // Returns: Same JsonObject instance without "age" property, original obj modified
+```
+
+#### `MergeWith(this JsonObject original, JsonObject? other, bool mutateOriginal = false)`
+
+Merges another JSON object into the current one. By default, returns a new object leaving the original unchanged. Set `mutateOriginal` to `true` to modify the original object. Properties from the `other` object take precedence for duplicate keys.
+
+```csharp
+var obj1 = JsonNode.Parse("""{"name": "John", "age": 30}""").AsObject();
+var obj2 = JsonNode.Parse("""{"age": 25, "city": "New York"}""").AsObject();
+var merged = obj1.MergeWith(obj2);
+// Returns: New JsonObject with {"name": "John", "age": 25, "city": "New York"}, original obj1 unchanged
+
+var mutated = obj1.MergeWith(obj2, mutateOriginal: true);
+// Returns: Same JsonObject instance with merged properties, original obj1 modified
 ```
 
 #### `From(BinaryData? data, JsonSerializerOptions? options = default)`

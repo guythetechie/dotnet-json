@@ -547,4 +547,140 @@ public class JsonObjectTests
             result.Should().NotContainProperty(propertyName);
         });
     }
+
+    [Fact]
+    public void MergeWith_returns_original_object_when_other_is_null_or_empty()
+    {
+        var generator = from first in Generator.JsonObject
+                        from second in Gen.OneOfConst(new JsonObject(), null)
+                        select (first, second);
+
+        generator.Sample(x =>
+        {
+            var (first, second) = x;
+
+            var result = first.MergeWith(second);
+
+            result.Should().BeSameAs(first);
+        });
+    }
+
+    [Fact]
+    public void MergeWith_merges_properties_from_other_object()
+    {
+        var generator = from first in Generator.JsonObject
+                        from second in Generator.JsonObject
+                        select (first, second);
+
+        generator.Sample(x =>
+        {
+            var (first, second) = x;
+
+            var result = first.MergeWith(second);
+
+            // All properties from first should be present
+            first.Iter(kvp =>
+            {
+                var (firstKey, firstValue) = kvp;
+
+                if (second.ContainsKey(firstKey))
+                {
+                    result.Should().ContainProperty(firstKey);
+                }
+                else
+                {
+                    result.Should().ContainProperty(firstKey).Which?.Should().BeEquivalentTo(firstValue);
+                }
+            });
+
+            // All properties from second should be present and take precedence
+            second.Iter(kvp =>
+            {
+                var (secondKey, secondValue) = kvp;
+
+                result.Should().ContainProperty(secondKey).Which?.Should().BeEquivalentTo(secondValue);
+            });
+        });
+    }
+
+    [Fact]
+    public void MergeWith_prioritizes_other_for_duplicate_keys()
+    {
+        var generator = from firstObject in JsonObjectGenerator.Value
+                        from secondObject in JsonObjectGenerator.Value
+                        from duplicatePropertyName in GeneratePropertyName()
+                        from firstValue in JsonNodeGenerator.Value
+                        from secondValue in JsonNodeGenerator.Value
+                        select (firstObject.SetProperty(duplicatePropertyName, firstValue),
+                                secondObject.SetProperty(duplicatePropertyName, secondValue),
+                                duplicatePropertyName,
+                                secondValue);
+
+        generator.Sample(x =>
+        {
+            var (first, second, propertyName, expectedValue) = x;
+
+            var result = first.MergeWith(second);
+
+            result.Should().ContainProperty(propertyName).Which?.Should().BeEquivalentTo(expectedValue);
+        });
+    }
+
+    [Fact]
+    public void MergeWith_does_not_mutate_original_when_mutateOriginal_is_false()
+    {
+        var generator = from first in Generator.JsonObject
+                        from second in Generator.JsonObject
+                        where second.Count > 0
+                        select (first, second);
+
+        generator.Sample(x =>
+        {
+            var (first, second) = x;
+
+            var result = first.MergeWith(second, mutateOriginal: false);
+
+            result.Should().NotBeSameAs(first);
+        });
+    }
+
+    [Fact]
+    public void MergeWith_mutates_original_when_mutateOriginal_is_true()
+    {
+        var generator = from first in Generator.JsonObject
+                        from second in Generator.JsonObject.Null()
+                        select (first, second);
+
+        generator.Sample(x =>
+        {
+            var (first, second) = x;
+
+            var result = first.MergeWith(second, mutateOriginal: true);
+
+            result.Should().BeSameAs(first);
+        });
+    }
+
+    [Fact]
+    public void MergeWith_creates_deep_copies_of_values()
+    {
+        var generator = from first in Generator.JsonObject
+                        from second in Generator.JsonObject
+                        select (first, second);
+
+        generator.Sample(x =>
+        {
+            var (first, second) = x;
+
+            var result = first.MergeWith(second);
+
+            result.Iter(kvp =>
+            {
+                var (key, value) = kvp;
+
+                second.GetProperty(key)
+                      .Iter(secondValue => value?.Should().NotBeSameAs(secondValue));
+            });
+        });
+    }
 }

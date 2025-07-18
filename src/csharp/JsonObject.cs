@@ -153,8 +153,7 @@ public static class JsonObjectModule
                                                    .Bind(jsonValue => jsonValue.AsAbsoluteUri()));
 
     /// <summary>
-    /// Sets a property in the JSON object, leaving the original object unchanged and returning a new object.
-    /// To mutate the original object (e.g. for performance reasons), set <paramref name="mutateOriginal"/> to true.
+    /// Sets a property in the JSON object.
     /// </summary>
     /// <param name="jsonObject">The <see cref="JsonObject"/> to modify.</param>
     /// <param name="propertyName">The property name.</param>
@@ -173,8 +172,7 @@ public static class JsonObjectModule
     }
 
     /// <summary>
-    /// Removes a property from the JSON object, leaving the original object unchanged and returning a new object.
-    /// To mutate the original object (e.g. for performance reasons), set <paramref name="mutateOriginal"/> to true.
+    /// Removes a property from the JSON object.
     /// </summary>
     /// <param name="jsonObject">The <see cref="JsonObject"/> to modify.</param>
     /// <param name="propertyName">The property name.</param>
@@ -189,6 +187,32 @@ public static class JsonObjectModule
         newJson.Remove(propertyName);
 
         return newJson;
+    }
+
+    /// <summary>
+    /// Merges another <see cref="JsonObject"/> into the current one.
+    /// </summary>
+    /// <param name="original">The original <see cref="JsonObject"/> to merge into.</param>
+    /// <param name="other">The <see cref="JsonObject"/> to merge from. If null, returns the original object.</param>
+    /// <param name="mutateOriginal">If true, modifies the original; if false, creates a deep copy first.</param>
+    /// <returns>A <see cref="JsonObject"/> with properties from both objects, with <paramref name="other"/> taking precedence for duplicate keys.</returns>
+    public static JsonObject MergeWith(this JsonObject original, JsonObject? other, bool mutateOriginal = false)
+    {
+        if (other is null || other.Count == 0)
+        {
+            return original;
+        }
+
+        var mergedJson = mutateOriginal
+                            ? original
+                            : original.DeepClone().AsObject();
+
+        foreach (var kvp in other)
+        {
+            mergedJson[kvp.Key] = kvp.Value?.DeepClone();
+        }
+
+        return mergedJson;
     }
 
     /// <summary>
