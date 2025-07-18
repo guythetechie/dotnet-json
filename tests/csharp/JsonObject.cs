@@ -476,7 +476,7 @@ public class JsonObjectTests
     }
 
     [Fact]
-    public void ToBinaryData_succeeds_if_the_content_is_a_json_object()
+    public void From_succeeds_if_the_content_is_a_json_object()
     {
         var generator = Generator.JsonObject;
 
@@ -484,14 +484,14 @@ public class JsonObjectTests
         {
             var binaryData = BinaryData.FromObjectAsJson(jsonObject);
 
-            var result = JsonObjectModule.ToJsonObject(binaryData);
+            var result = JsonObjectModule.From(binaryData);
 
             result.Should().BeSuccess().Which.Should().BeEquivalentTo(jsonObject);
         });
     }
 
     [Fact]
-    public void ToBinaryData_fails_if_the_content_is_not_a_json_object()
+    public void From_fails_if_the_content_is_not_a_json_object()
     {
         var generator = JsonNodeGenerator.NonJsonObject;
 
@@ -499,7 +499,7 @@ public class JsonObjectTests
         {
             var binaryData = BinaryData.FromObjectAsJson(jsonNode);
 
-            var result = JsonObjectModule.ToJsonObject(binaryData);
+            var result = JsonObjectModule.From(binaryData);
 
             result.Should().BeError();
         });

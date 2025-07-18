@@ -197,6 +197,6 @@ public static class JsonObjectModule
     /// <param name="data">The <see cref="BinaryData"/> containing JSON.</param>
     /// <param name="options">Serializer options. Defaults to <see cref="JsonSerializerOptions.Web"/> if null.</param>
     /// <returns>Success with the deserialized <see cref="JsonObject"/>, or error if deserialization fails.</returns>
-    public static Result<JsonObject> ToJsonObject(BinaryData? data, JsonSerializerOptions? options = default) =>
-        JsonNodeModule.Deserialize<JsonObject>(data, options);
+    public static Result<JsonObject> From(BinaryData? data, JsonSerializerOptions? options = default) =>
+    JsonNodeModule.Deserialize<JsonObject>(data, options);
 }

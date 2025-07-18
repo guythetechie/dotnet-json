@@ -101,7 +101,7 @@ var failingResult = GetRoles(client, goodUri, cancellationToken)
 | JsonObjectModule | [`GetAbsoluteUriProperty(this JsonObject?, string)`](#getabsoluteuripropertythis-jsonobject-jsonobject-string-propertyname) | Gets an absolute URI property from a JSON object |
 | JsonObjectModule | [`SetProperty(this JsonObject, string, JsonNode?, bool)`](#setpropertythis-jsonobject-jsonobject-string-propertyname-jsonnode-propertyvalue-bool-mutateoriginal--false) | Sets a property on a JSON object |
 | JsonObjectModule | [`RemoveProperty(this JsonObject, string, bool)`](#removepropertythis-jsonobject-jsonobject-string-propertyname-bool-mutateoriginal--false) | Removes a property from a JSON object |
-| JsonObjectModule | [`ToJsonObject(BinaryData?, JsonSerializerOptions?)`](#tojsonobjectbinarydata-data-jsonserializeroptions-options--default) | Converts binary data to a JSON object |
+| JsonObjectModule | [`From(BinaryData?, JsonSerializerOptions?)`](#frombinarydata-data-jsonserializeroptions-options--default-1) | Converts binary data to a JSON object |
 | JsonValueModule | [`AsString(this JsonValue?)`](#asstringthis-jsonvalue-jsonvalue) | Converts a JSON value to a string |
 | JsonValueModule | [`AsInt(this JsonValue?)`](#asintthis-jsonvalue-jsonvalue) | Converts a JSON value to an integer |
 | JsonValueModule | [`AsBool(this JsonValue?)`](#asboolthis-jsonvalue-jsonvalue) | Converts a JSON value to a boolean |
@@ -391,17 +391,17 @@ var mutated = obj.RemoveProperty("age", mutateOriginal: true);
 // Returns: Same JsonObject instance without "age" property, original obj modified
 ```
 
-#### `ToJsonObject(BinaryData? data, JsonSerializerOptions? options = default)`
+#### `From(BinaryData? data, JsonSerializerOptions? options = default)`
 
 Converts binary data to a JSON object.
 
 ```csharp
 var data = BinaryData.FromString("""{"name": "John", "age": 30}""");
-var result = JsonObjectModule.ToJsonObject(data);
+var result = JsonObjectModule.From(data);
 // Returns: Success(JsonObject)
 
 var arrayData = BinaryData.FromString("""[1, 2, 3]""");
-var errorResult = JsonObjectModule.ToJsonObject(arrayData);
+var errorResult = JsonObjectModule.From(arrayData);
 // Returns: Error("Deserialization return a null result.")
 ```
 
