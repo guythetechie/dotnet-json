@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace common;
 
+
 /// <summary>
 /// Provides extension methods for working with <see cref="JsonNode"/> instances in a functional style.
 /// </summary>
@@ -72,7 +73,7 @@ public static class JsonNodeModule
                 _ => await JsonNode.ParseAsync(data, nodeOptions, documentOptions, cancellationToken) switch
                 {
                     null => Error.From("Deserialization returned a null result."),
-                    var node => node
+                    var node => Result.Success(node)
                 }
             };
         }
@@ -98,7 +99,7 @@ public static class JsonNodeModule
                 _ => JsonNode.Parse(data, options) switch
                 {
                     null => Error.From("Deserialization returned a null result."),
-                    var node => node
+                    var node => Result.Success(node)
                 }
             };
         }
@@ -122,7 +123,7 @@ public static class JsonNodeModule
             return JsonSerializer.SerializeToNode(data, options) switch
             {
                 null => Error.From("Serialization returned a null result."),
-                var jsonNode => jsonNode
+                var jsonNode => Result.Success(jsonNode)
             };
         }
         catch (JsonException exception)
@@ -150,7 +151,7 @@ public static class JsonNodeModule
             return node.Deserialize<T>(options ?? JsonSerializerOptions.Web) switch
             {
                 null => Error.From("Deserialization returned a null result."),
-                var t => t
+                var t => Result.Success(t)
             };
         }
         catch (JsonException exception)
@@ -175,11 +176,11 @@ public static class JsonNodeModule
 
         try
         {
-            var jsonObject = JsonSerializer.Deserialize<T>(data, options ?? JsonSerializerOptions.Web);
+            var t = JsonSerializer.Deserialize<T>(data, options ?? JsonSerializerOptions.Web);
 
-            return jsonObject is null
-                ? Error.From("Deserialization return a null result.")
-                : jsonObject;
+            return t is null
+                ? Error.From("Deserialization returned a null result.")
+                : Result.Success(t);
         }
         catch (JsonException exception)
         {

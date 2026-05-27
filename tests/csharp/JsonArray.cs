@@ -1,145 +1,252 @@
 ﻿using CsCheck;
-using FluentAssertions;
+using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
-using Xunit;
+using TUnit.Assertions.Enums;
 
 namespace common.tests;
 
-public class JsonArrayTests
+file static class Common
 {
-    [Fact]
-    public void ToJsonArray_has_correct_count()
-    {
-        var generator = Generator.JsonNode.Null().List;
+    public static CancellationToken CancellationToken =>
+        TestContext.Current?.Execution.CancellationToken ?? CancellationToken.None;
+}
 
-        generator.Sample(nodes =>
+public class JsonArrayModule_ToJsonArray_Tests
+{
+    [Test]
+    public async ValueTask Roundtrips()
+    {
+        var gen = JsonNodeGenerator.Any.Null().ArrayOf();
+
+        await gen.SampleAsync(async nodes =>
         {
-            var jsonArray = nodes.ToJsonArray();
-            jsonArray.AsEnumerable().Should().HaveSameCount(nodes);
+            // Act
+            var array = nodes.ToJsonArray();
+
+            // Assert
+            await Assert.That(array.AsEnumerable())
+                        .IsEquivalentTo(nodes, CollectionOrdering.Matching);
         });
     }
+}
 
-    [Fact]
-    public async Task ToJsonArray_with_async_enumerable_has_correct_count()
+public class JsonArrayModule_ToJsonArray_WithAsyncEnumerable_Tests
+{
+
+    [Test]
+    public async ValueTask Roundtrips()
     {
-        var generator = Generator.JsonNode.Null().List;
+        var gen =
+            from nodes in JsonNodeGenerator.Any.Null().ArrayOf()
+            select nodes.ToAsyncEnumerable();
 
-        await generator.SampleAsync(async nodes =>
+        await gen.SampleAsync(async nodes =>
         {
-            var nodesAsyncEnumerable = nodes.ToAsyncEnumerable();
-            var jsonArray = await nodesAsyncEnumerable.ToJsonArray(CancellationToken.None);
-            jsonArray.AsEnumerable().Should().HaveSameCount(nodes);
+            // Act
+            var array = await nodes.ToJsonArray(Common.CancellationToken);
+
+            // Assert
+            await Assert.That(nodes)
+                        .IsEquivalentTo(array, CollectionOrdering.Matching, Common.CancellationToken);
         });
     }
+}
 
-    [Fact]
-    public void GetJsonObjects_fails_if_the_array_contains_a_non_object_node()
+public class JsonArrayModule_GetJsonObjects_Tests
+{
+    [Test]
+    public async ValueTask Succeeds_when_all_nodes_are_objects()
     {
-        var generator = from jsonArray in Generator.JsonArray
-                        where jsonArray.Any(node => node is not JsonObject)
-                        select jsonArray;
+        var gen = JsonNodeGenerator.JsonObject.ArrayOf();
 
-        generator.Sample(jsonArray =>
+        await gen.SampleAsync(async nodes =>
         {
+            // Arrange
+            var jsonArray = new JsonArray([.. nodes]);
+
+            // Act
             var result = jsonArray.GetJsonObjects();
-            result.Should().BeError();
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(nodes, CollectionOrdering.Matching);
         });
     }
 
-    [Fact]
-    public void GetJsonObjects_succeeds_if_the_array_is_empty()
+    [Test]
+    public async ValueTask Fails_when_any_node_is_not_an_object()
     {
-        var jsonArray = new JsonArray();
-        var result = jsonArray.GetJsonObjects();
-        result.Should().BeSuccess();
-    }
+        var gen =
+            from nodes in JsonNodeGenerator.Any.Null().ArrayOf()
+            where nodes.Any(node => node is not JsonObject)
+            select nodes;
 
-    [Fact]
-    public void GetJsonObjects_succeeds_if_the_array_only_contains_object_nodes()
-    {
-        var generator = from jsonObjects in Generator.JsonObject.Array[0, 10]
-                        where jsonObjects.Length > 0
-                        select new JsonArray(jsonObjects);
-
-        generator.Sample(jsonArray =>
+        await gen.SampleAsync(async nodes =>
         {
+            // Arrange
+            var jsonArray = new JsonArray([.. nodes]);
+
+            // Act
             var result = jsonArray.GetJsonObjects();
-            result.Should().BeSuccess();
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+}
+
+public class JsonArrayModule_GetElements_Tests
+{
+    [Test]
+    public async ValueTask Succeeds_when_all_nodes_are_valid()
+    {
+        var gen =
+            from nodes in JsonNodeGenerator.Any.Null().ArrayOf()
+            from f1 in MapperGenerator.ObjectToObject
+            let f = new Func<JsonNode?, Result<object>>(node => Result.Success(f1(node ?? new JsonObject())))
+            let g = new Func<int, Error>(index => throw new UnreachableException())
+            select (nodes, f, g);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (nodes, selector, errorFromIndex) = tuple;
+            var jsonArray = new JsonArray([.. nodes]);
+
+            // Act
+            var result = jsonArray.GetElements(selector, errorFromIndex);
+
+            // Assert
+            await Assert.That(result).IsSuccess();
         });
     }
 
-    [Fact]
-    public void GetJsonArrays_fails_if_the_array_contains_a_non_array_node()
+    [Test]
+    public async ValueTask Fails_when_any_node_is_invalid()
     {
-        var generator = from jsonArray in Generator.JsonArray
-                        where jsonArray.Any(node => node is not JsonArray)
-                        select jsonArray;
+        var gen =
+            from nodes in JsonNodeGenerator.Any.Null().ArrayOf()
+            from failingNodes in
+                Generator.SubSetOf([.. from node in nodes
+                                       where node is not null
+                                       select node])
+            where failingNodes.Count > 0
+            let f = new Func<JsonNode?, Result<object>>(node => failingNodes.Contains(node)
+                                                                ? Error.From("Node is invalid.")
+                                                                : Result.Success((object)Unit.Instance))
+            let g = new Func<int, Error>(index => Error.From($"Node at index {index} is invalid."))
+            select (nodes, f, g);
 
-        generator.Sample(jsonArray =>
+        await gen.SampleAsync(async tuple =>
         {
+            // Arrange
+            var (nodes, selector, errorFromIndex) = tuple;
+            var jsonArray = new JsonArray([.. nodes]);
+
+            // Act
+            var result = jsonArray.GetElements(selector, errorFromIndex);
+
+            // Assert
+            await Assert.That(result).IsError();
+        });
+    }
+}
+
+public class JsonArrayModule_GetJsonArrays_Tests
+{
+    [Test]
+    public async ValueTask Succeeds_when_all_nodes_are_arrays()
+    {
+        var gen = JsonNodeGenerator.JsonArray.ArrayOf();
+
+        await gen.SampleAsync(async nodes =>
+        {
+            // Arrange
+            var jsonArray = new JsonArray([.. nodes]);
+
+            // Act
             var result = jsonArray.GetJsonArrays();
-            result.Should().BeError();
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(nodes, CollectionOrdering.Matching);
         });
     }
 
-    [Fact]
-    public void GetJsonArrays_succeeds_if_the_array_is_empty()
+    [Test]
+    public async ValueTask Fails_when_any_node_is_not_an_array()
     {
-        var jsonArray = new JsonArray();
-        var result = jsonArray.GetJsonArrays();
-        result.Should().BeSuccess();
-    }
+        var gen =
+            from nodes in JsonNodeGenerator.Any.Null().ArrayOf()
+            where nodes.Any(node => node is not JsonArray)
+            select nodes;
 
-    [Fact]
-    public void GetJsonArrays_succeeds_if_the_array_only_contains_array_nodes()
-    {
-        var generator = from jsonArrays in Generator.JsonArray.Array[0, 10]
-                        where jsonArrays.Length > 0
-                        select new JsonArray(jsonArrays);
-
-        generator.Sample(jsonArray =>
+        await gen.SampleAsync(async nodes =>
         {
+            // Arrange
+            var jsonArray = new JsonArray([.. nodes]);
+
+            // Act
             var result = jsonArray.GetJsonArrays();
-            result.Should().BeSuccess();
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+}
+
+public class JsonArrayModule_GetJsonValues_Tests
+{
+    [Test]
+    public async ValueTask Succeeds_when_all_nodes_are_values()
+    {
+        var gen = JsonNodeGenerator.JsonValue.ArrayOf();
+
+        await gen.SampleAsync(async nodes =>
+        {
+            // Arrange
+            var jsonArray = new JsonArray([.. nodes]);
+
+            // Act
+            var result = jsonArray.GetJsonValues();
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(nodes, CollectionOrdering.Matching);
         });
     }
 
-    [Fact]
-    public void GetJsonValues_fails_if_the_array_contains_a_non_value_node()
+    [Test]
+    public async ValueTask Fails_when_any_node_is_not_a_value()
     {
-        var generator = from jsonArray in Generator.JsonArray
-                        where jsonArray.Any(node => node is not JsonValue)
-                        select jsonArray;
+        var gen =
+            from nodes in JsonNodeGenerator.Any.Null().ArrayOf()
+            where nodes.Any(node => node is not JsonValue)
+            select nodes;
 
-        generator.Sample(jsonArray =>
+        await gen.SampleAsync(async nodes =>
         {
+            // Arrange
+            var jsonArray = new JsonArray([.. nodes]);
+
+            // Act
             var result = jsonArray.GetJsonValues();
-            result.Should().BeError();
-        });
-    }
 
-    [Fact]
-    public void GetJsonValues_succeeds_if_the_array_is_empty()
-    {
-        var jsonArray = new JsonArray();
-        var result = jsonArray.GetJsonValues();
-        result.Should().BeSuccess();
-    }
-
-    [Fact]
-    public void GetJsonValues_succeeds_if_the_array_only_contains_value_nodes()
-    {
-        var generator = from jsonValues in Generator.JsonValue.Array[0, 10]
-                        where jsonValues.Length > 0
-                        select new JsonArray(jsonValues);
-
-        generator.Sample(jsonArray =>
-        {
-            var result = jsonArray.GetJsonValues();
-            result.Should().BeSuccess();
+            // Assert
+            await Assert.That(result)
+                        .IsError();
         });
     }
 }

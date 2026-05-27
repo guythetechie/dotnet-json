@@ -23,7 +23,7 @@ public static class JsonObjectModule
                     ? jsonNode switch
                     {
                         null => Result.Error<JsonNode>($"Property '{propertyName}' is null."),
-                        _ => jsonNode
+                        _ => Result.Success(jsonNode)
                     }
                     : Error.From($"JSON object does not have a property named '{propertyName}'.")
         };
@@ -36,7 +36,7 @@ public static class JsonObjectModule
     /// <returns>Some with the <see cref="JsonNode"/> if found, otherwise None.</returns>
     public static Option<JsonNode> GetOptionalProperty(this JsonObject? jsonObject, string propertyName) =>
         jsonObject.GetProperty(propertyName)
-                  .Match(Option<JsonNode>.Some,
+                  .Match(Option.Some,
                          _ => Option.None);
 
     /// <summary>
@@ -140,6 +140,28 @@ public static class JsonObjectModule
         jsonObject.GetProperty(propertyName,
                                jsonNode => jsonNode.AsJsonValue()
                                                    .Bind(jsonValue => jsonValue.AsGuid()));
+
+    /// <summary>
+    /// Safely retrieves an unsigned 32-bit integer property from a <see cref="JsonObject"/>.
+    /// </summary>
+    /// <param name="jsonObject">The <see cref="JsonObject"/> to query.</param>
+    /// <param name="propertyName">The property name.</param>
+    /// <returns>Success with the <see cref="uint"/> value if found and is a valid non-negative integer, otherwise error details.</returns>
+    public static Result<uint> GetUIntProperty(this JsonObject? jsonObject, string propertyName) =>
+        jsonObject.GetProperty(propertyName,
+                               jsonNode => jsonNode.AsJsonValue()
+                                                   .Bind(jsonValue => jsonValue.AsUInt()));
+
+    /// <summary>
+    /// Safely retrieves an ISO-8601 <see cref="DateTimeOffset"/> property from a <see cref="JsonObject"/>.
+    /// </summary>
+    /// <param name="jsonObject">The <see cref="JsonObject"/> to query.</param>
+    /// <param name="propertyName">The property name.</param>
+    /// <returns>Success with the parsed <see cref="DateTimeOffset"/> if found and well-formed, otherwise error details.</returns>
+    public static Result<DateTimeOffset> GetDateTimeOffsetProperty(this JsonObject? jsonObject, string propertyName) =>
+        jsonObject.GetProperty(propertyName,
+                               jsonNode => jsonNode.AsJsonValue()
+                                                   .Bind(jsonValue => jsonValue.AsDateTimeOffset()));
 
     /// <summary>
     /// Safely retrieves an absolute URI property from a <see cref="JsonObject"/>.

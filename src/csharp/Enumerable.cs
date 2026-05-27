@@ -9,68 +9,68 @@ using System.Threading.Tasks;
 namespace common;
 
 /// <summary>
-/// Provides extension methods for working with IEnumerable&lt;T&gt; in a functional style.
+/// Provides extension methods for working with <see cref="IEnumerable{T}"/> in a functional style.
 /// </summary>
 public static class EnumerableExtensions
 {
     /// <summary>
-    /// Gets the first element of the sequence as an option.
+    /// Returns the first element as an option.
     /// </summary>
-    /// <typeparam name="T">The element type.</typeparam>
-    /// <param name="source">The source sequence.</param>
-    /// <returns>Some(first element) if the sequence has elements, otherwise None.</returns>
-    public static Option<T> Head<T>(this IEnumerable<T> source)
+    /// <returns><see cref="Option.Some{T}(T)"/> with the first element if the sequence has elements, otherwise <see cref="Option.None"/>.</returns>
+    public static Option<T> Head<T>(this IEnumerable<T> source) =>
+        source.Select(Option.Some)
+              .DefaultIfEmpty(Option.None)
+              .First();
+
+    /// <summary>
+    /// Returns the first element where <paramref name="predicate"/> is true as an option.
+    /// </summary>
+    /// <returns><see cref="Option.Some{T}(T)"/> with the first matching element if one matches the predicate, otherwise <see cref="Option.None"/>.</returns>
+    public static Option<T> Head<T>(this IEnumerable<T> source, Func<T, bool> predicate) =>
+        source.Where(predicate)
+              .Head();
+
+    /// <summary>
+    /// Returns the single element as an option.
+    /// </summary>
+    /// <returns><see cref="Option.Some{T}(T)"/> with the element if the sequence contains exactly one element, otherwise <see cref="Option.None"/>.</returns>
+    public static Option<T> SingleOrNone<T>(this IEnumerable<T> source)
     {
         using var enumerator = source.GetEnumerator();
 
+        if (enumerator.MoveNext() is false)
+        {
+            return Option.None; // No elements
+        }
+
+        var item = Option.Some(enumerator.Current);
+
         return enumerator.MoveNext()
-                ? Option.Some(enumerator.Current)
-                : Option.None;
+                ? Option.None // More than one element
+                : item;
     }
 
     /// <summary>
-    /// Returns the single element of the sequence as an option.
+    /// Filters and transforms elements using <paramref name="selector"/>.
     /// </summary>
-    /// <typeparam name="T">The element type.</typeparam>
-    /// <param name="source">The source sequence.</param>
-    /// <returns>Some(element) if the sequence contains exactly one element, otherwise None.</returns>
-    public static Option<T> SingleOrNone<T>(this IEnumerable<T> source) =>
-        source.Select(Option.Some)
-              .SingleOrDefault() ?? Option.None;
-
-    /// <summary>
-    /// Filters and transforms elements using an option-returning selector.
-    /// </summary>
-    /// <typeparam name="T">The source element type.</typeparam>
-    /// <typeparam name="T2">The result element type.</typeparam>
-    /// <param name="source">The source sequence.</param>
-    /// <param name="selector">Function that returns an option for each element.</param>
-    /// <returns>A sequence containing only the values where the selector returned Some.</returns>
+    /// <returns>A sequence containing only the values where <paramref name="selector"/> returned <see cref="Option.Some{T}(T)"/>.</returns>
     public static IEnumerable<T2> Choose<T, T2>(this IEnumerable<T> source, Func<T, Option<T2>> selector) =>
         source.Select(selector)
               .Where(option => option.IsSome)
-              .Select(option => option.IfNone(() => throw new UnreachableException("All options should be in the 'Some' state.")));
+              .Select(option => option.IfNoneThrow(() => new UnreachableException("All options should be in the 'Some' state.")));
 
     /// <summary>
-    /// Filters and transforms elements using an async option-returning selector.
+    /// Asynchronously filters and transforms elements using <paramref name="selector"/>.
     /// </summary>
-    /// <typeparam name="T">The source element type.</typeparam>
-    /// <typeparam name="T2">The result element type.</typeparam>
-    /// <param name="source">The source sequence.</param>
-    /// <param name="selector">Async function that returns an option for each element.</param>
-    /// <returns>An async sequence containing only the values where the selector returned Some.</returns>
+    /// <returns>An async sequence containing only the values where <paramref name="selector"/> returned <see cref="Option.Some{T}(T)"/>.</returns>
     public static IAsyncEnumerable<T2> Choose<T, T2>(this IEnumerable<T> source, Func<T, ValueTask<Option<T2>>> selector) =>
         source.ToAsyncEnumerable()
               .Choose(selector);
 
     /// <summary>
-    /// Finds the first element that produces a Some value when transformed.
+    /// Returns the first element that produces Some when transformed by <paramref name="selector"/>.
     /// </summary>
-    /// <typeparam name="T">The source element type.</typeparam>
-    /// <typeparam name="T2">The result element type.</typeparam>
-    /// <param name="source">The source sequence.</param>
-    /// <param name="selector">Function that returns an option for each element.</param>
-    /// <returns>The first Some value produced by the selector, or None if no element produces Some.</returns>
+    /// <returns>The first value produced by <paramref name="selector"/>, or <see cref="Option.None"/> if no element produces a value.</returns>
     public static Option<T2> Pick<T, T2>(this IEnumerable<T> source, Func<T, Option<T2>> selector) =>
         source.Select(selector)
               .Where(option => option.IsSome)
@@ -78,14 +78,9 @@ public static class EnumerableExtensions
               .First();
 
     /// <summary>
-    /// Applies a result-returning function to each element, collecting successes or aggregating errors.
+    /// Applies <paramref name="selector"/> to each element, collecting successes or aggregating errors.
     /// </summary>
-    /// <typeparam name="T">The source element type.</typeparam>
-    /// <typeparam name="T2">The result element type.</typeparam>
-    /// <param name="source">The source enumerable.</param>
-    /// <param name="selector">Function that returns a result for each element.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Success with all results if all succeed, otherwise an error with all failures combined.</returns>
+    /// <returns><see cref="Result.Success{T}(T)"/> with all results if every element succeeds, otherwise <see cref="Result.Error{T}(Error)"/> with the combined errors.</returns>
     public static Result<ImmutableArray<T2>> Traverse<T, T2>(this IEnumerable<T> source, Func<T, Result<T2>> selector, CancellationToken cancellationToken)
     {
         var results = new List<T2>();
@@ -100,56 +95,57 @@ public static class EnumerableExtensions
     }
 
     /// <summary>
-    /// Applies an option-returning function to each element, succeeding only if all elements succeed.
+    /// Applies <paramref name="selector"/> to each element, succeeding only if all elements succeed.
     /// </summary>
-    /// <typeparam name="T">The source element type.</typeparam>
-    /// <typeparam name="T2">The result element type.</typeparam>
-    /// <param name="source">The source enumerable.</param>
-    /// <param name="selector">Function that returns an option for each element.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Some with all results if all succeed, otherwise None.</returns>
+    /// <returns><see cref="Option.Some{T}(T)"/> with all results if every element returns Some, otherwise <see cref="Option.None"/>.</returns>
     public static Option<ImmutableArray<T2>> Traverse<T, T2>(this IEnumerable<T> source, Func<T, Option<T2>> selector, CancellationToken cancellationToken)
     {
         var results = new List<T2>();
-        var hasNone = false;
 
-        source.Iter(item => selector(item).Match(results.Add, () => hasNone = true),
-                    cancellationToken);
+        foreach (var t in source)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var hasNone = false;
 
-        return hasNone
-                ? Option.None
-                : Option.Some(results.ToImmutableArray());
+            selector(t).Match(results.Add, () => hasNone = true);
+
+            if (hasNone)
+            {
+                return Option.None;
+            }
+        }
+
+        return Option.Some(results.ToImmutableArray());
     }
 
     /// <summary>
-    /// Executes an action on each element sequentially.
+    /// Executes <paramref name="action"/> on each element sequentially.
     /// </summary>
-    /// <typeparam name="T">The element type.</typeparam>
-    /// <param name="source">The source enumerable.</param>
-    /// <param name="action">The action to execute for each element.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    public static void Iter<T>(this IEnumerable<T> source, Action<T> action, CancellationToken cancellationToken = default) =>
-        source.IterParallel(action, maxDegreeOfParallelism: 1, cancellationToken);
+    public static void Iter<T>(this IEnumerable<T> source, Action<T> action, CancellationToken cancellationToken = default)
+    {
+        foreach (var item in source)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            action(item);
+        }
+    }
 
     /// <summary>
-    /// Executes an async action on each element sequentially.
+    /// Asynchronously executes <paramref name="action"/> on each element sequentially.
     /// </summary>
-    /// <typeparam name="T">The element type.</typeparam>
-    /// <param name="source">The source enumerable.</param>
-    /// <param name="action">The async action to execute for each element.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A task representing the async operation.</returns>
-    public static ValueTask IterTask<T>(this IEnumerable<T> source, Func<T, ValueTask> action, CancellationToken cancellationToken = default) =>
-        source.IterTaskParallel(action, maxDegreeOfParallelism: 1, cancellationToken);
+    public static async ValueTask IterTask<T>(this IEnumerable<T> source, Func<T, ValueTask> action, CancellationToken cancellationToken = default)
+    {
+        foreach (var item in source)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await action(item);
+        }
+    }
 
     /// <summary>
-    /// Executes an action on each element in parallel.
+    /// Executes <paramref name="action"/> on each element in parallel.
     /// </summary>
-    /// <typeparam name="T">The element type.</typeparam>
-    /// <param name="source">The source enumerable.</param>
-    /// <param name="action">The action to execute for each element.</param>
-    /// <param name="maxDegreeOfParallelism">Maximum degree of parallelism. Set to <see cref="Option.None"/> for unbounded parallelism.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="maxDegreeOfParallelism">Maximum degree of parallelism. <see cref="Option.None"/> for unbounded.</param>
     public static void IterParallel<T>(this IEnumerable<T> source, Action<T> action, Option<int> maxDegreeOfParallelism, CancellationToken cancellationToken = default)
     {
         var options = new ParallelOptions { CancellationToken = cancellationToken };
@@ -159,14 +155,9 @@ public static class EnumerableExtensions
     }
 
     /// <summary>
-    /// Executes an async action on each element in parallel.
+    /// Asynchronously executes <paramref name="action"/> on each element in parallel.
     /// </summary>
-    /// <typeparam name="T">The element type.</typeparam>
-    /// <param name="source">The source enumerable.</param>
-    /// <param name="action">The async action to execute for each element.</param>
-    /// <param name="maxDegreeOfParallelism">Maximum degree of parallelism. Set to <see cref="Option.None"/> for unbounded parallelism.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A task representing the async operation.</returns>
+    /// <param name="maxDegreeOfParallelism">Maximum degree of parallelism. <see cref="Option.None"/> for unbounded.</param>
     public static async ValueTask IterTaskParallel<T>(this IEnumerable<T> source, Func<T, ValueTask> action, Option<int> maxDegreeOfParallelism, CancellationToken cancellationToken = default)
     {
         var options = new ParallelOptions { CancellationToken = cancellationToken };
@@ -176,12 +167,8 @@ public static class EnumerableExtensions
     }
 
     /// <summary>
-    /// Executes a side effect action on each element as it's enumerated.
+    /// Executes <paramref name="action"/> on each element as it's enumerated, returning the original sequence unchanged.
     /// </summary>
-    /// <typeparam name="T">The element type.</typeparam>
-    /// <param name="source">The source enumerable.</param>
-    /// <param name="action">The side effect action to execute.</param>
-    /// <returns>The original enumerable unchanged, useful for debugging or logging without affecting data flow.</returns>
     public static IEnumerable<T> Tap<T>(this IEnumerable<T> source, Action<T> action) =>
         source.Select(item =>
         {
@@ -190,12 +177,8 @@ public static class EnumerableExtensions
         });
 
     /// <summary>
-    /// Separates an enumerable of tuples into a tuple of immutable arrays.
+    /// Separates tuples into two immutable arrays. Inverse of <c>Zip</c>.
     /// </summary>
-    /// <typeparam name="T1">The first tuple element type.</typeparam>
-    /// <typeparam name="T2">The second tuple element type.</typeparam>
-    /// <param name="source">The source enumerable of tuples.</param>
-    /// <returns>A tuple containing two immutable arrays with the separated elements.</returns>
     public static (ImmutableArray<T1>, ImmutableArray<T2>) Unzip<T1, T2>(this IEnumerable<(T1, T2)> source)
     {
         var list1 = new List<T1>();
@@ -212,76 +195,94 @@ public static class EnumerableExtensions
 }
 
 /// <summary>
-/// Provides extension methods for working with IAsyncEnumerable&lt;T&gt; in a functional style.
+/// Provides extension methods for working with <see cref="IAsyncEnumerable{T}"/> in a functional style.
 /// </summary>
 public static class AsyncEnumerableExtensions
 {
     /// <summary>
-    /// Gets the first element of the async sequence as an option.
+    /// Returns the first element of the async sequence as an option.
     /// </summary>
-    /// <typeparam name="T">The element type.</typeparam>
-    /// <param name="source">The source async sequence.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Some(first element) if the sequence has elements, otherwise None.</returns>
-    public static async ValueTask<Option<T>> Head<T>(this IAsyncEnumerable<T> source, CancellationToken cancellationToken)
+    /// <returns><see cref="Option.Some{T}(T)"/> with the first element if the sequence has elements, otherwise <see cref="Option.None"/>.</returns>
+    public static ValueTask<Option<T>> Head<T>(this IAsyncEnumerable<T> source, CancellationToken cancellationToken) =>
+        source.Select(Option.Some)
+              .DefaultIfEmpty(Option.None)
+              .FirstAsync(cancellationToken);
+
+    /// <summary>
+    /// Returns the first async element where <paramref name="predicate"/> is true as an option.
+    /// </summary>
+    /// <returns><see cref="Option.Some{T}(T)"/> with the first matching element if one matches the predicate, otherwise <see cref="Option.None"/>.</returns>
+    public static ValueTask<Option<T>> Head<T>(this IAsyncEnumerable<T> source, Func<T, bool> predicate, CancellationToken cancellationToken) =>
+        source.Where(predicate)
+              .Head(cancellationToken);
+
+    /// <summary>
+    /// Returns the single async element as an option.
+    /// </summary>
+    /// <returns><see cref="Option.Some{T}(T)"/> with the element if the sequence contains exactly one element, otherwise <see cref="Option.None"/>.</returns>
+    public static async ValueTask<Option<T>> SingleOrNone<T>(this IAsyncEnumerable<T> source, CancellationToken cancellationToken)
     {
         await using var enumerator = source.GetAsyncEnumerator(cancellationToken);
 
+        if (await enumerator.MoveNextAsync() is false)
+        {
+            return Option.None; // No elements
+        }
+
+        var item = Option.Some(enumerator.Current);
+
         return await enumerator.MoveNextAsync()
-                ? Option.Some(enumerator.Current)
-                : Option.None;
+                ? Option.None // More than one element
+                : item;
     }
 
     /// <summary>
-    /// Filters and transforms async elements using an option-returning selector.
+    /// Filters and transforms async elements using <paramref name="selector"/>.
     /// </summary>
-    /// <typeparam name="T">The source element type.</typeparam>
-    /// <typeparam name="T2">The result element type.</typeparam>
-    /// <param name="source">The source async sequence.</param>
-    /// <param name="selector">Function that returns an option for each element.</param>
-    /// <returns>An async sequence containing only the values where the selector returned Some.</returns>
+    /// <returns>An async sequence containing only the values where <paramref name="selector"/> returned <see cref="Option.Some{T}(T)"/>.</returns>
     public static IAsyncEnumerable<T2> Choose<T, T2>(this IAsyncEnumerable<T> source, Func<T, Option<T2>> selector) =>
         source.Select(selector)
               .Where(option => option.IsSome)
-              .Select(option => option.IfNone(() => throw new UnreachableException("All options should be in the 'Some' state.")));
+              .Select(option => option.IfNoneThrow(() => new UnreachableException("All options should be in the 'Some' state.")));
 
     /// <summary>
-    /// Filters and transforms async elements using an option-returning selector.
+    /// Asynchronously filters and transforms async elements using <paramref name="selector"/>.
     /// </summary>
-    /// <typeparam name="T">The source element type.</typeparam>
-    /// <typeparam name="T2">The result element type.</typeparam>
-    /// <param name="source">The source async sequence.</param>
-    /// <param name="selector">Function that returns an option for each element.</param>
-    /// <returns>An async sequence containing only the values where the selector returned Some.</returns>
+    /// <returns>An async sequence containing only the values where <paramref name="selector"/> returned <see cref="Option.Some{T}(T)"/>.</returns>
     public static IAsyncEnumerable<T2> Choose<T, T2>(this IAsyncEnumerable<T> source, Func<T, ValueTask<Option<T2>>> selector) =>
         source.Select(async (T item, CancellationToken _) => await selector(item))
               .Where(option => option.IsSome)
-              .Select(option => option.IfNone(() => throw new UnreachableException("All options should be in the 'Some' state.")));
+              .Select(option => option.IfNoneThrow(() => new UnreachableException("All options should be in the 'Some' state.")));
 
     /// <summary>
-    /// Finds the first async element that produces a Some value when transformed.
+    /// Returns the first async element that produces Some when transformed by <paramref name="selector"/>.
     /// </summary>
-    /// <typeparam name="T">The source element type.</typeparam>
-    /// <typeparam name="T2">The result element type.</typeparam>
-    /// <param name="source">The source async sequence.</param>
-    /// <param name="selector">Function that returns an option for each element.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The first Some value produced by the selector, or None if no element produces Some.</returns>
-    public static async ValueTask<Option<T2>> Pick<T, T2>(this IAsyncEnumerable<T> source, Func<T, Option<T2>> selector, CancellationToken cancellationToken) =>
-        await source.Select(selector)
-                    .Where(option => option.IsSome)
-                    .DefaultIfEmpty(Option.None)
-                    .FirstAsync(cancellationToken);
+    /// <returns>The first value produced by <paramref name="selector"/>, or <see cref="Option.None"/> if no element produces a value.</returns>
+    public static ValueTask<Option<T2>> Pick<T, T2>(this IAsyncEnumerable<T> source, Func<T, Option<T2>> selector, CancellationToken cancellationToken) =>
+        source.Select(selector)
+              .Where(option => option.IsSome)
+              .DefaultIfEmpty(Option.None)
+              .FirstAsync(cancellationToken);
 
     /// <summary>
-    /// Applies an async result-returning function to each element, collecting successes or aggregating errors.
+    /// Returns the first async element that produces Some when transformed by <paramref name="selector"/>.
     /// </summary>
-    /// <typeparam name="T">The source element type.</typeparam>
-    /// <typeparam name="T2">The result element type.</typeparam>
-    /// <param name="source">The source async enumerable.</param>
-    /// <param name="selector">Async function that returns a result for each element.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Success with all results if all succeed, otherwise an error with all failures combined.</returns>
+    /// <returns>The first value produced by <paramref name="selector"/>, or <see cref="Option.None"/> if no element produces a value.</returns>
+    public static ValueTask<Option<T2>> Pick<T, T2>(this IAsyncEnumerable<T> source, Func<T, ValueTask<Option<T2>>> selector, CancellationToken cancellationToken) =>
+        source.Select(async (T t, CancellationToken _) => await selector(t))
+              .Pick(x => x, cancellationToken);
+
+    /// <summary>
+    /// Asynchronously applies <paramref name="selector"/> to each element, collecting successes or aggregating errors.
+    /// </summary>
+    /// <returns><see cref="Result.Success{T}(T)"/> with all results if every element succeeds, otherwise <see cref="Result.Error{T}(Error)"/> with the combined errors.</returns>
+    public static ValueTask<Result<ImmutableArray<T2>>> Traverse<T, T2>(this IAsyncEnumerable<T> source, Func<T, Result<T2>> selector, CancellationToken cancellationToken) =>
+        source.Traverse(t => ValueTask.FromResult(selector(t)), cancellationToken);
+
+    /// <summary>
+    /// Asynchronously applies <paramref name="selector"/> to each element, collecting successes or aggregating errors.
+    /// </summary>
+    /// <returns><see cref="Result.Success{T}(T)"/> with all results if every element succeeds, otherwise <see cref="Result.Error{T}(Error)"/> with the combined errors.</returns>
     public static async ValueTask<Result<ImmutableArray<T2>>> Traverse<T, T2>(this IAsyncEnumerable<T> source, Func<T, ValueTask<Result<T2>>> selector, CancellationToken cancellationToken)
     {
         var results = new List<T2>();
@@ -299,50 +300,65 @@ public static class AsyncEnumerableExtensions
     }
 
     /// <summary>
-    /// Applies an async option-returning function to each element, succeeding only if all elements succeed.
+    /// Applies <paramref name="selector"/> to each element, succeeding only if all elements succeed.
     /// </summary>
-    /// <typeparam name="T">The source element type.</typeparam>
-    /// <typeparam name="T2">The result element type.</typeparam>
-    /// <param name="source">The source async enumerable.</param>
-    /// <param name="selector">Async function that returns an option for each element.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Some with all results if all succeed, otherwise None.</returns>
+    /// <returns><see cref="Option.Some{T}(T)"/> with all results if every element returns Some, otherwise <see cref="Option.None"/>.</returns>
+    public static ValueTask<Option<ImmutableArray<T2>>> Traverse<T, T2>(this IAsyncEnumerable<T> source, Func<T, Option<T2>> selector, CancellationToken cancellationToken) =>
+        source.Traverse(t => ValueTask.FromResult(selector(t)), cancellationToken);
+
+    /// <summary>
+    /// Asynchronously applies <paramref name="selector"/> to each element, succeeding only if all elements succeed.
+    /// </summary>
+    /// <returns><see cref="Option.Some{T}(T)"/> with all results if every element returns Some, otherwise <see cref="Option.None"/>.</returns>
     public static async ValueTask<Option<ImmutableArray<T2>>> Traverse<T, T2>(this IAsyncEnumerable<T> source, Func<T, ValueTask<Option<T2>>> selector, CancellationToken cancellationToken)
     {
         var results = new List<T2>();
         var hasNone = false;
 
-        await source.IterTask(async item =>
+        await foreach (var item in source.WithCancellation(cancellationToken))
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var option = await selector(item);
             option.Match(results.Add, () => hasNone = true);
-        }, cancellationToken);
 
-        return hasNone
-                ? Option.None
-                : Option.Some(results.ToImmutableArray());
+            if (hasNone)
+            {
+                return Option.None;
+            }
+        }
+
+        return Option.Some(results.ToImmutableArray());
     }
 
     /// <summary>
-    /// Executes an async action on each element sequentially.
+    /// Executes <paramref name="action"/> on each element sequentially.
     /// </summary>
-    /// <typeparam name="T">The element type.</typeparam>
-    /// <param name="source">The source async enumerable.</param>
-    /// <param name="action">The async action to execute for each element.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A task representing the async operation.</returns>
-    public static ValueTask IterTask<T>(this IAsyncEnumerable<T> source, Func<T, ValueTask> action, CancellationToken cancellationToken = default) =>
-        source.IterTaskParallel(action, maxDegreeOfParallelism: 1, cancellationToken);
+    public static async ValueTask Iter<T>(this IAsyncEnumerable<T> source, Action<T> action, CancellationToken cancellationToken = default)
+    {
+        await foreach (var item in source.WithCancellation(cancellationToken))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            action(item);
+        }
+    }
 
     /// <summary>
-    /// Executes an async action on each element in parallel.
+    /// Asynchronously executes <paramref name="action"/> on each element sequentially.
     /// </summary>
-    /// <typeparam name="T">The element type.</typeparam>
-    /// <param name="source">The source async enumerable.</param>
-    /// <param name="action">The async action to execute for each element.</param>
-    /// <param name="maxDegreeOfParallelism">Maximum degree of parallelism. Set to <see cref="Option.None"/> for unbounded parallelism.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A task representing the async operation.</returns>
+    public static async ValueTask IterTask<T>(this IAsyncEnumerable<T> source, Func<T, ValueTask> action, CancellationToken cancellationToken = default)
+    {
+        await foreach (var item in source.WithCancellation(cancellationToken))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await action(item);
+        }
+    }
+
+    /// <summary>
+    /// Asynchronously executes <paramref name="action"/> on each element in parallel.
+    /// </summary>
+    /// <param name="maxDegreeOfParallelism">Maximum degree of parallelism. <see cref="Option.None"/> for unbounded.</param>
     public static async ValueTask IterTaskParallel<T>(this IAsyncEnumerable<T> source, Func<T, ValueTask> action, Option<int> maxDegreeOfParallelism, CancellationToken cancellationToken = default)
     {
         var options = new ParallelOptions { CancellationToken = cancellationToken };
@@ -352,12 +368,8 @@ public static class AsyncEnumerableExtensions
     }
 
     /// <summary>
-    /// Executes a side effect action on each async element as it's enumerated.
+    /// Executes <paramref name="action"/> on each async element as it's enumerated, returning the original sequence unchanged.
     /// </summary>
-    /// <typeparam name="T">The element type.</typeparam>
-    /// <param name="source">The source async enumerable.</param>
-    /// <param name="action">The side effect action to execute.</param>
-    /// <returns>The original async enumerable unchanged, useful for debugging or logging without affecting data flow.</returns>
     public static IAsyncEnumerable<T> Tap<T>(this IAsyncEnumerable<T> source, Action<T> action) =>
         source.Select(item =>
         {
@@ -366,12 +378,8 @@ public static class AsyncEnumerableExtensions
         });
 
     /// <summary>
-    /// Executes an async side effect action on each async element as it's enumerated.
+    /// Asynchronously executes <paramref name="action"/> on each async element as it's enumerated, returning the original sequence unchanged.
     /// </summary>
-    /// <typeparam name="T">The element type.</typeparam>
-    /// <param name="source">The source async enumerable.</param>
-    /// <param name="action">The async side effect action to execute.</param>
-    /// <returns>The original async enumerable unchanged, useful for debugging or logging without affecting data flow.</returns>
     public static IAsyncEnumerable<T> TapTask<T>(this IAsyncEnumerable<T> source, Func<T, ValueTask> action) =>
         source.Select(async (T item, CancellationToken _) =>
         {
@@ -380,23 +388,19 @@ public static class AsyncEnumerableExtensions
         });
 
     /// <summary>
-    /// Separates an async enumerable of tuples into a tuple of immutable arrays.
+    /// Asynchronously separates tuples into two immutable arrays. Async inverse of <c>Zip</c>.
     /// </summary>
-    /// <typeparam name="T1">The first tuple element type.</typeparam>
-    /// <typeparam name="T2">The second tuple element type.</typeparam>
-    /// <param name="source">The source async enumerable of tuples.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A tuple containing two immutable arrays with the separated elements.</returns>
     public static async ValueTask<(ImmutableArray<T1>, ImmutableArray<T2>)> Unzip<T1, T2>(this IAsyncEnumerable<(T1, T2)> source, CancellationToken cancellationToken)
     {
         var list1 = new List<T1>();
         var list2 = new List<T2>();
 
-        await foreach (var (item1, item2) in source.WithCancellation(cancellationToken))
-        {
-            list1.Add(item1);
-            list2.Add(item2);
-        }
+        await source.Iter(item =>
+                          {
+                              var (t1, t2) = item;
+                              list1.Add(t1);
+                              list2.Add(t2);
+                          }, cancellationToken);
 
         return ([.. list1], [.. list2]);
     }
@@ -408,13 +412,9 @@ public static class AsyncEnumerableExtensions
 public static class DictionaryExtensions
 {
     /// <summary>
-    /// Safely retrieves a value from a dictionary.
+    /// Returns the value for <paramref name="key"/> as an option.
     /// </summary>
-    /// <typeparam name="TKey">The key type.</typeparam>
-    /// <typeparam name="TValue">The value type.</typeparam>
-    /// <param name="dictionary">The dictionary to search.</param>
-    /// <param name="key">The key to find.</param>
-    /// <returns>Some(value) if the key exists, otherwise None.</returns>
+    /// <returns><see cref="Option.Some{T}(T)"/> with the value if the key exists, otherwise <see cref="Option.None"/>.</returns>
     public static Option<TValue> Find<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key) =>
         dictionary.TryGetValue(key, out var value)
             ? Option.Some(value)

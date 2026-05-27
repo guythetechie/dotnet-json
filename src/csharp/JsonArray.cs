@@ -19,7 +19,7 @@ public static class JsonArrayModule
     /// <param name="nodes">The enumerable to convert.</param>
     /// <returns>A <see cref="JsonArray"/> containing all nodes.</returns>
     public static JsonArray ToJsonArray(this IEnumerable<JsonNode?> nodes) =>
-        new([.. nodes]);
+        [with([.. nodes])];
 
     /// <summary>
     /// Asynchronously converts an async enumerable of <see cref="JsonNode"/> instances to a <see cref="JsonArray"/>.

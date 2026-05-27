@@ -1,260 +1,420 @@
 ﻿using CsCheck;
-using FluentAssertions;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Text;
+using System.Linq;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
-using Xunit;
 
 namespace common.tests;
 
-public class JsonNodeTests
+file static class Common
 {
-    [Fact]
-    public void AsJsonObject_fails_if_the_node_is_null()
-    {
-        var node = (JsonNode?)null;
-        var result = node.AsJsonObject();
-        result.Should().BeError();
-    }
+    public static CancellationToken CancellationToken =>
+        TestContext.Current?.Execution.CancellationToken ?? CancellationToken.None;
 
-    [Fact]
-    public void AsJsonObject_fails_if_the_node_is_not_a_json_object()
+    public static bool StringIsNotValidJson([NotNullWhen(false)] string? input)
     {
-        var generator = JsonNodeGenerator.NonJsonObject;
-
-        generator.Sample(node =>
+        if (string.IsNullOrWhiteSpace(input))
         {
+            return true;
+        }
+
+        try
+        {
+            JsonNode.Parse(input);
+            return false;
+        }
+        catch (JsonException)
+        {
+            return true;
+        }
+    }
+}
+
+public class JsonNodeModule_AsJsonObject_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_node_is_not_a_json_object()
+    {
+        var gen =
+            from node in JsonNodeGenerator.Any.Null()
+            where node is not JsonObject
+            select node;
+
+        await gen.SampleAsync(async node =>
+        {
+            // Act
             var result = node.AsJsonObject();
-            result.Should().BeError();
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
         });
     }
 
-    [Fact]
-    public void AsJsonObject_succeeds_if_the_node_is_a_json_object()
+    [Test]
+    public async ValueTask Succeeds_if_the_node_is_a_json_object()
     {
-        var generator = JsonNodeGenerator.JsonObject;
+        var gen = JsonObjectGenerator.Any;
 
-        generator.Sample(node =>
+        await gen.SampleAsync(async jsonObject =>
         {
+            // Arrange
+            var node = (JsonNode)jsonObject;
+
+            // Act
             var result = node.AsJsonObject();
-            result.Should().BeSuccess().Which.Should().BeAssignableTo<JsonObject>();
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(jsonObject);
         });
     }
+}
 
-    [Fact]
-    public void AsJsonArray_fails_if_the_node_is_null()
+public class JsonNodeModule_AsJsonArray_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_node_is_not_a_json_array()
     {
-        var node = (JsonNode?)null;
-        var result = node.AsJsonArray();
-        result.Should().BeError();
-    }
+        var gen =
+            from node in JsonNodeGenerator.Any.Null()
+            where node is not JsonArray
+            select node;
 
-    [Fact]
-    public void AsJsonArray_fails_if_the_node_is_not_a_json_array()
-    {
-        var generator = JsonNodeGenerator.NonJsonArray;
-        generator.Sample(node =>
+        await gen.SampleAsync(async node =>
         {
+            // Act
             var result = node.AsJsonArray();
-            result.Should().BeError();
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
         });
     }
 
-    [Fact]
-    public void AsJsonArray_succeeds_if_the_node_is_a_json_array()
+    [Test]
+    public async ValueTask Succeeds_if_the_node_is_a_json_array()
     {
-        var generator = JsonNodeGenerator.JsonArray;
-        generator.Sample(node =>
+        var gen = JsonArrayGenerator.Any;
+
+        await gen.SampleAsync(async jsonArray =>
         {
+            // Arrange
+            var node = (JsonNode)jsonArray;
+
+            // Act
             var result = node.AsJsonArray();
-            result.Should().BeSuccess().Which.Should().BeAssignableTo<JsonArray>();
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(jsonArray);
         });
     }
+}
 
-    [Fact]
-    public void AsJsonValue_fails_if_the_node_is_null()
+public class JsonNodeModule_AsJsonValue_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_node_is_not_a_json_value()
     {
-        var node = (JsonNode?)null;
-        var result = node.AsJsonValue();
-        result.Should().BeError();
-    }
+        var gen =
+            from node in JsonNodeGenerator.Any.Null()
+            where node is not JsonValue
+            select node;
 
-    [Fact]
-    public void AsJsonValue_fails_if_the_node_is_not_a_json_value()
-    {
-        var generator = JsonNodeGenerator.NonJsonValue;
-
-        generator.Sample(node =>
+        await gen.SampleAsync(async node =>
         {
+            // Act
             var result = node.AsJsonValue();
-            result.Should().BeError();
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
         });
     }
 
-    [Fact]
-    public void AsJsonValue_succeeds_if_the_node_is_a_json_value()
+    [Test]
+    public async ValueTask Succeeds_if_the_node_is_a_json_value()
     {
-        var generator = JsonNodeGenerator.JsonValue;
+        var gen = JsonValueGenerator.Any;
 
-        generator.Sample(node =>
+        await gen.SampleAsync(async jsonValue =>
         {
+            // Arrange
+            var node = (JsonNode)jsonValue;
+
+            // Act
             var result = node.AsJsonValue();
-            result.Should().BeSuccess().Which.Should().BeAssignableTo<JsonValue>();
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(jsonValue);
+        });
+    }
+}
+
+public class JsonNodeModule_From_Stream_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_stream_is_not_valid_json()
+    {
+        var gen =
+            Gen.String
+               .Where(Common.StringIsNotValidJson)
+               .Select(BinaryData.FromString)
+               .Null();
+
+        await gen.SampleAsync(async data =>
+        {
+            // Arrange
+            using var stream = data?.ToStream();
+
+            // Act
+            var result = await JsonNodeModule.From(stream, default, default, Common.CancellationToken);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
         });
     }
 
-    [Fact]
-    public async Task From_with_stream_fails_if_the_stream_is_null()
+    [Test]
+    public async ValueTask Roundtrips()
     {
-        var stream = (Stream?)null;
-        var result = await JsonNodeModule.From(stream, default, default, CancellationToken.None);
-        result.Should().BeError();
-    }
+        var gen = JsonNodeGenerator.Any;
 
-    [Fact]
-    public async Task From_with_stream_fails_if_the_stream_contains_invalid_json()
-    {
-        using var stream = new MemoryStream(Encoding.UTF8.GetBytes("invalid json"));
-        var result = await JsonNodeModule.From(stream, default, default, CancellationToken.None);
-        result.Should().BeError();
-    }
-
-    [Fact]
-    public void From_with_stream_succeeds_if_the_stream_contains_valid_json()
-    {
-        var generator = JsonNodeGenerator.Value;
-
-        generator.Sample(node =>
+        await gen.SampleAsync(async node =>
         {
-            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(node.ToJsonString()));
-            var task = JsonNodeModule.From(stream, default, default, CancellationToken.None);
-            var result = task.Result;
-            result.Should().BeSuccess().Which.Should().BeEquivalentTo(node);
+            // Arrange
+            using var stream = new MemoryStream();
+            await JsonSerializer.SerializeAsync(stream, node, options: default, Common.CancellationToken);
+            stream.Seek(0, SeekOrigin.Begin);
+
+            // Act
+            var result = await JsonNodeModule.From(stream, default, default, Common.CancellationToken);
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(node);
         });
     }
+}
 
-    [Fact]
-    public void From_with_binary_data_fails_if_the_data_is_null()
+public class JsonNodeModule_From_BinaryData_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_binary_data_is_not_valid_json()
     {
-        var data = (BinaryData?)null;
-        var result = JsonNodeModule.From(data);
-        result.Should().BeError();
-    }
+        var gen =
+            Gen.String
+               .Where(Common.StringIsNotValidJson)
+               .Select(BinaryData.FromString)
+               .Null();
 
-    [Fact]
-    public void From_with_binary_data_fails_if_the_data_contains_invalid_json()
-    {
-        var data = BinaryData.FromString("invalid json");
-        var result = JsonNodeModule.From(data);
-        result.Should().BeError();
-    }
-
-    [Fact]
-    public void From_with_binary_data_succeeds_if_the_data_contains_valid_json()
-    {
-        var generator = JsonNodeGenerator.Value;
-
-        generator.Sample(node =>
+        await gen.SampleAsync(async data =>
         {
-            var data = BinaryData.FromString(node.ToJsonString());
+            // Act
             var result = JsonNodeModule.From(data);
-            result.Should().BeSuccess().Which.Should().BeEquivalentTo(node);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
         });
     }
 
-    [Fact]
-    public void From_with_object_succeeds_with_serializable_object()
+    [Test]
+    public async ValueTask Roundtrips()
     {
-        var testObject = new { Name = "Test", Value = 42 };
-        var result = JsonNodeModule.From(testObject);
-        result.Should().BeSuccess().Which.Should().BeAssignableTo<JsonNode>();
-    }
+        var gen = JsonNodeGenerator.Any;
 
-    [Fact]
-    public void From_with_object_fails_if_the_object_is_null()
+        await gen.SampleAsync(async node =>
+        {
+            // Arrange
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(node);
+            var data = BinaryData.FromBytes(bytes);
+
+            // Act
+            var result = JsonNodeModule.From(data);
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(node);
+        });
+    }
+}
+
+public class JsonNodeModule_From_T_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_object_is_null()
     {
+        // Act
         var result = JsonNodeModule.From((object?)null);
-        result.Should().BeError();
+
+        // Assert
+        await Assert.That(result)
+                    .IsError();
     }
 
-    [Fact]
-    public void To_fails_if_the_node_is_null()
+    [Test]
+    public async ValueTask Roundtrips()
     {
-        var node = (JsonNode?)null;
-        var result = JsonNodeModule.To<JsonObject>(node);
-        result.Should().BeError();
-    }
+        var gen = JsonObjectGenerator.Any;
 
-    [Fact]
-    public void To_fails_if_the_node_cannot_be_deserialized_to_target_type()
-    {
-        var node = JsonNode.Parse("[1, 2, 3]");
-        var result = JsonNodeModule.To<JsonObject>(node);
-        result.Should().BeError();
-    }
-
-    [Fact]
-    public void To_succeeds_if_the_node_can_be_deserialized_to_target_type()
-    {
-        var generator = JsonNodeGenerator.JsonObject;
-
-        generator.Sample(node =>
+        await gen.SampleAsync(async jsonObject =>
         {
+            // Act
+            var result = JsonNodeModule.From(jsonObject);
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .Satisfies(node => node!.ToJsonString(),
+                                   jsonString => jsonString.IsEquivalentTo(jsonObject.ToJsonString()));
+        });
+    }
+}
+
+public class JsonNodeModule_To_T_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_node_is_null()
+    {
+        // Act
+        var result = JsonNodeModule.To<JsonObject>(null);
+
+        // Assert
+        await Assert.That(result)
+                    .IsError();
+    }
+
+    [Test]
+    public async ValueTask Fails_if_the_node_cannot_be_deserialized_to_target_type()
+    {
+        var gen =
+            from node in JsonNodeGenerator.Any.Null()
+            where node is not JsonObject
+            select node;
+
+        await gen.SampleAsync(async node =>
+        {
+            // Act
             var result = JsonNodeModule.To<JsonObject>(node);
-            result.Should().BeSuccess().Which.Should().BeAssignableTo<JsonObject>();
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
         });
     }
 
-    [Fact]
-    public void ToStream_creates_stream_from_json_node()
+    [Test]
+    public async ValueTask Roundtrips()
     {
-        var generator = JsonNodeGenerator.Value;
+        var gen = JsonObjectGenerator.Any;
 
-        generator.Sample(node =>
+        await gen.SampleAsync(async jsonObject =>
         {
-            var stream = JsonNodeModule.ToStream(node);
-            stream.Should().NotBeNull();
+            // Arrange
+            var node = (JsonNode)jsonObject;
 
-            using var reader = new StreamReader(stream);
-            var content = reader.ReadToEnd();
-            content.Should().NotBeEmpty();
+            // Act
+            var result = JsonNodeModule.To<JsonObject>(node);
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(jsonObject);
         });
     }
+}
 
-    [Fact]
-    public void Deserialize_fails_if_the_data_is_null()
+public class JsonNodeModule_Deserialize_T_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_binary_data_is_null()
     {
-        var data = (BinaryData?)null;
-        var result = JsonNodeModule.Deserialize<JsonObject>(data);
-        result.Should().BeError();
+        // Act
+        var result = JsonNodeModule.Deserialize<JsonObject>(null);
+
+        // Assert
+        await Assert.That(result)
+                    .IsError();
     }
 
-    [Fact]
-    public void Deserialize_fails_if_the_data_cannot_be_deserialized()
+    [Test]
+    public async ValueTask Fails_if_the_binary_data_cannot_be_deserialized()
     {
-        var generator = JsonNodeGenerator.NonJsonObject;
+        var gen =
+            Gen.String
+               .Select(BinaryData.FromString)
+               .Null();
 
-        generator.Sample(node =>
+        await gen.SampleAsync(async data =>
         {
-            var data = BinaryData.FromString(node.ToJsonString());
+            // Act
             var result = JsonNodeModule.Deserialize<JsonObject>(data);
-            result.Should().BeError();
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
         });
     }
 
-    [Fact]
-    public void Deserialize_succeeds_if_the_data_can_be_deserialized()
+    [Test]
+    public async ValueTask Roundtrips()
     {
-        var generator = JsonNodeGenerator.Value;
+        var gen = JsonNodeGenerator.Any;
 
-        generator.Sample(node =>
+        await gen.SampleAsync(async node =>
         {
-            var data = BinaryData.FromString(node.ToJsonString());
+            // Arrange
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(node);
+            var data = BinaryData.FromBytes(bytes);
+
+            // Act
             var result = JsonNodeModule.Deserialize<JsonNode>(data);
-            result.Should().BeSuccess().Which.Should().BeEquivalentTo(node);
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(node);
+        });
+    }
+}
+
+public class JsonNodeModule_ToStream_Tests
+{
+    [Test]
+    public async ValueTask Roundtrips()
+    {
+        var gen = JsonNodeGenerator.Any;
+
+        await gen.SampleAsync(async node =>
+        {
+            // Act
+            using var stream = JsonNodeModule.ToStream(node);
+            var deserializedNode = await JsonSerializer.DeserializeAsync<JsonNode>(stream, options: default, Common.CancellationToken);
+
+            // Assert
+            await Assert.That(deserializedNode)
+                        .IsEquivalentTo(node);
         });
     }
 }
