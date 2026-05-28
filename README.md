@@ -96,8 +96,10 @@ var failingResult = GetRoles(client, goodUri, cancellationToken)
 | JsonObjectModule | [`GetJsonValueProperty(this JsonObject?, string)`](#getjsonvaluepropertythis-jsonobject-jsonobject-string-propertyname) | Gets a JSON value property from a JSON object |
 | JsonObjectModule | [`GetStringProperty(this JsonObject?, string)`](#getstringpropertythis-jsonobject-jsonobject-string-propertyname) | Gets a string property from a JSON object |
 | JsonObjectModule | [`GetIntProperty(this JsonObject?, string)`](#getintpropertythis-jsonobject-jsonobject-string-propertyname) | Gets an integer property from a JSON object |
+| JsonObjectModule | [`GetUIntProperty(this JsonObject?, string)`](#getuintpropertythis-jsonobject-jsonobject-string-propertyname) | Gets an unsigned integer property from a JSON object |
 | JsonObjectModule | [`GetBoolProperty(this JsonObject?, string)`](#getboolpropertythis-jsonobject-jsonobject-string-propertyname) | Gets a boolean property from a JSON object |
 | JsonObjectModule | [`GetGuidProperty(this JsonObject?, string)`](#getguidpropertythis-jsonobject-jsonobject-string-propertyname) | Gets a GUID property from a JSON object |
+| JsonObjectModule | [`GetDateTimeOffsetProperty(this JsonObject?, string)`](#getdatetimeoffsetpropertythis-jsonobject-jsonobject-string-propertyname) | Gets an ISO-8601 `DateTimeOffset` property from a JSON object |
 | JsonObjectModule | [`GetAbsoluteUriProperty(this JsonObject?, string)`](#getabsoluteuripropertythis-jsonobject-jsonobject-string-propertyname) | Gets an absolute URI property from a JSON object |
 | JsonObjectModule | [`SetProperty(this JsonObject, string, JsonNode?, bool)`](#setpropertythis-jsonobject-jsonobject-string-propertyname-jsonnode-propertyvalue-bool-mutateoriginal--false) | Sets a property on a JSON object |
 | JsonObjectModule | [`RemoveProperty(this JsonObject, string, bool)`](#removepropertythis-jsonobject-jsonobject-string-propertyname-bool-mutateoriginal--false) | Removes a property from a JSON object |
@@ -105,9 +107,12 @@ var failingResult = GetRoles(client, goodUri, cancellationToken)
 | JsonObjectModule | [`From(BinaryData?, JsonSerializerOptions?)`](#frombinarydata-data-jsonserializeroptions-options--default-1) | Converts binary data to a JSON object |
 | JsonValueModule | [`AsString(this JsonValue?)`](#asstringthis-jsonvalue-jsonvalue) | Converts a JSON value to a string |
 | JsonValueModule | [`AsInt(this JsonValue?)`](#asintthis-jsonvalue-jsonvalue) | Converts a JSON value to an integer |
+| JsonValueModule | [`AsUInt(this JsonValue?)`](#asuintthis-jsonvalue-jsonvalue) | Converts a JSON value to an unsigned integer |
 | JsonValueModule | [`AsBool(this JsonValue?)`](#asboolthis-jsonvalue-jsonvalue) | Converts a JSON value to a boolean |
 | JsonValueModule | [`AsGuid(this JsonValue?)`](#asguidthis-jsonvalue-jsonvalue) | Converts a JSON value to a GUID |
+| JsonValueModule | [`AsDateTimeOffset(this JsonValue?)`](#asdatetimeoffsetthis-jsonvalue-jsonvalue) | Converts a JSON value to a `DateTimeOffset` |
 | JsonValueModule | [`AsAbsoluteUri(this JsonValue?)`](#asabsoluteurithis-jsonvalue-jsonvalue) | Converts a JSON value to an absolute URI |
+| JsonValueModule | [`Serialize(DateTimeOffset)`](#serializedatetimeoffset-datetime) | Serializes a `DateTimeOffset` to an ISO-8601 UTC string |
 | JsonArrayModule | [`ToJsonArray(this IEnumerable<JsonNode?>)`](#tojsonarraythis-ienumerablejsonnode-nodes) | Creates a JSON array from an enumerable of JSON nodes |
 | JsonArrayModule | [`ToJsonArray(this IAsyncEnumerable<JsonNode?>, CancellationToken)`](#tojsonarraythis-iasyncenumerablejsonnode-nodes-cancellationtoken-cancellationtoken) | Asynchronously creates a JSON array from an async enumerable |
 | JsonArrayModule | [`GetElements<T>(this JsonArray, Func<JsonNode?, Result<T>>, Func<int, Error>)`](#getelementstthis-jsonarray-jsonarray-funcjsonnode-resultt-selector-funcint-error-errorfromindex) | Extracts elements from a JSON array using a selector function |
@@ -336,6 +341,16 @@ var result = obj.GetIntProperty("age");
 // Returns: Success(30)
 ```
 
+#### `GetUIntProperty(this JsonObject? jsonObject, string propertyName)`
+
+Gets an unsigned integer property from a JSON object.
+
+```csharp
+var obj = JsonNode.Parse("""{"count": 42}""").AsObject();
+var result = obj.GetUIntProperty("count");
+// Returns: Success(42u)
+```
+
 #### `GetBoolProperty(this JsonObject? jsonObject, string propertyName)`
 
 Gets a boolean property from a JSON object.
@@ -354,6 +369,16 @@ Gets a GUID property from a JSON object.
 var obj = JsonNode.Parse("""{"id": "123e4567-e89b-12d3-a456-426614174000"}""").AsObject();
 var result = obj.GetGuidProperty("id");
 // Returns: Success(Guid)
+```
+
+#### `GetDateTimeOffsetProperty(this JsonObject? jsonObject, string propertyName)`
+
+Safely retrieves an ISO-8601 `DateTimeOffset` property from a JSON object.
+
+```csharp
+var obj = JsonNode.Parse("""{"createdAt": "2026-05-28T14:00:00.0000000Z"}""").AsObject();
+var result = obj.GetDateTimeOffsetProperty("createdAt");
+// Returns: Success(DateTimeOffset)
 ```
 
 #### `GetAbsoluteUriProperty(this JsonObject? jsonObject, string propertyName)`
@@ -448,6 +473,20 @@ var result = value.AsInt();
 // Returns: Success(42)
 ```
 
+#### `AsUInt(this JsonValue? jsonValue)`
+
+Converts a JSON value to an unsigned integer.
+
+```csharp
+var value = JsonValue.Create(42);
+var result = value.AsUInt();
+// Returns: Success(42u)
+
+var stringValue = JsonValue.Create("42");
+var errorResult = stringValue.AsUInt();
+// Returns: Error("JSON value is not an unsigned integer.")
+```
+
 #### `AsBool(this JsonValue? jsonValue)`
 
 Converts a JSON value to a boolean.
@@ -468,6 +507,20 @@ var result = value.AsGuid();
 // Returns: Success(Guid)
 ```
 
+#### `AsDateTimeOffset(this JsonValue? jsonValue)`
+
+Converts a JSON value to a `DateTimeOffset`. Expects an ISO-8601 string produced by `Serialize(DateTimeOffset)`; parsed in UTC with round-trip semantics.
+
+```csharp
+var value = JsonValue.Create("2026-05-28T14:00:00.0000000Z");
+var result = value.AsDateTimeOffset();
+// Returns: Success(DateTimeOffset)
+
+var numberValue = JsonValue.Create(123);
+var errorResult = numberValue.AsDateTimeOffset();
+// Returns: Error("JSON value is not a valid ISO-8601 date-time string.")
+```
+
 #### `AsAbsoluteUri(this JsonValue? jsonValue)`
 
 Converts a JSON value to an absolute URI.
@@ -476,6 +529,16 @@ Converts a JSON value to an absolute URI.
 var value = JsonValue.Create("https://example.com");
 var result = value.AsAbsoluteUri();
 // Returns: Success(Uri)
+```
+
+#### `Serialize(DateTimeOffset dateTime)`
+
+Serializes a `DateTimeOffset` to an ISO-8601 UTC string with 7-digit fractional seconds. This is a plain static method, not an extension.
+
+```csharp
+var dateTime = new DateTimeOffset(2026, 5, 28, 14, 0, 0, TimeSpan.Zero);
+var serialized = JsonValueModule.Serialize(dateTime);
+// Returns: "2026-05-28T14:00:00.0000000Z"
 ```
 
 ### JsonArrayModule

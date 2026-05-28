@@ -1,5 +1,8 @@
 ﻿using CsCheck;
+using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
@@ -258,493 +261,1002 @@ public class JsonObjectModule_GetJsonObjectProperty_Tests
     }
 }
 
+public class JsonObjectModule_GetJsonArrayProperty_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_property_is_missing()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any.Null()
+                where jsonObject is null || jsonObject.ContainsKey(propertyName) is false
+                select jsonObject
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetJsonArrayProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Fails_if_the_property_is_not_a_json_array()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in
+                from node in JsonNodeGenerator.Any.Null()
+                where node is not JsonArray
+                select node
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetJsonArrayProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Succeeds_if_the_property_is_a_json_array()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in JsonNodeGenerator.JsonArray
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, propertyValue, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, propertyValue, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetJsonArrayProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(propertyValue);
+        });
+    }
+}
+
+public class JsonObjectModule_GetJsonValueProperty_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_property_is_missing()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any.Null()
+                where jsonObject is null || jsonObject.ContainsKey(propertyName) is false
+                select jsonObject
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetJsonValueProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Fails_if_the_property_is_not_a_json_value()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in
+                from node in JsonNodeGenerator.Any.Null()
+                where node is not JsonValue
+                select node
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetJsonValueProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Succeeds_if_the_property_is_a_json_value()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in JsonNodeGenerator.JsonValue
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, propertyValue, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, propertyValue, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetJsonValueProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(propertyValue);
+        });
+    }
+}
+
+public class JsonObjectModule_GetStringProperty_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_property_is_missing()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any.Null()
+                where jsonObject is null || jsonObject.ContainsKey(propertyName) is false
+                select jsonObject
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetStringProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Fails_if_the_property_is_not_a_string()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in
+                from node in JsonNodeGenerator.Any.Null()
+                where node is not JsonValue jsonValue
+                      || jsonValue.GetValueKind() is not JsonValueKind.String
+                select node
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetStringProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Succeeds_if_the_property_is_a_string()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in Gen.String
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, propertyValue, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, propertyValue, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetStringProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(propertyValue);
+        });
+    }
+}
+
+public class JsonObjectModule_GetIntProperty_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_property_is_missing()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any.Null()
+                where jsonObject is null || jsonObject.ContainsKey(propertyName) is false
+                select jsonObject
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetIntProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Fails_if_the_property_is_not_an_int()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in
+                from node in JsonNodeGenerator.Any.Null()
+                where node is not JsonValue jsonValue
+                      || jsonValue.GetValueKind() is not JsonValueKind.Number
+                      || jsonValue.TryGetValue<int>(out _) is false
+                select node
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetIntProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Succeeds_if_the_property_is_an_int()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in Gen.Int
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, propertyValue, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, propertyValue, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetIntProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(propertyValue);
+        });
+    }
+}
+
+public class JsonObjectModule_GetBoolProperty_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_property_is_missing()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any.Null()
+                where jsonObject is null || jsonObject.ContainsKey(propertyName) is false
+                select jsonObject
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetBoolProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Fails_if_the_property_is_not_a_bool()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in
+                from node in JsonNodeGenerator.Any.Null()
+                where node is not JsonValue jsonValue
+                      || jsonValue.GetValueKind() is not (JsonValueKind.True or JsonValueKind.False)
+                select node
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetBoolProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Succeeds_if_the_property_is_a_bool()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in Gen.Bool
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, propertyValue, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, propertyValue, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetBoolProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(propertyValue);
+        });
+    }
+}
+
+public class JsonObjectModule_GetGuidProperty_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_property_is_missing()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any.Null()
+                where jsonObject is null || jsonObject.ContainsKey(propertyName) is false
+                select jsonObject
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetGuidProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Fails_if_the_property_is_not_a_guid()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in
+                from node in JsonNodeGenerator.Any.Null()
+                where node is not JsonValue jsonValue
+                      || jsonValue.GetValueKind() is not JsonValueKind.String
+                      || (jsonValue.TryGetValue<Guid>(out _) is false
+                          && (jsonValue.TryGetValue<string>(out var str) is false
+                              || Guid.TryParse(str, out _) is false))
+                select node
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetGuidProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Succeeds_if_the_property_is_a_guid()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in Gen.Guid
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, propertyValue, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, propertyValue, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetGuidProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(propertyValue);
+        });
+    }
+}
+
+public class JsonObjectModule_GetUIntProperty_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_property_is_missing()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any.Null()
+                where jsonObject is null || jsonObject.ContainsKey(propertyName) is false
+                select jsonObject
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetUIntProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Fails_if_the_property_is_not_a_uint()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in
+                from node in JsonNodeGenerator.Any.Null()
+                where node is not JsonValue jsonValue
+                      || jsonValue.GetValueKind() is not JsonValueKind.Number
+                      || (jsonValue.TryGetValue<uint>(out _) is false && jsonValue.TryGetValue<int>(out _) is false)
+                select node
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetUIntProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Succeeds_if_the_property_is_a_uint()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in Gen.UInt
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, propertyValue, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, propertyValue, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetUIntProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(propertyValue);
+        });
+    }
+}
+
+public class JsonObjectModule_GetDateTimeOffsetProperty_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_property_is_missing()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any.Null()
+                where jsonObject is null || jsonObject.ContainsKey(propertyName) is false
+                select jsonObject
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetDateTimeOffsetProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Fails_if_the_property_is_not_a_datetimeoffset()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in
+                from node in JsonNodeGenerator.Any.Null()
+                where node is not JsonValue jsonValue
+                      || jsonValue.GetValueKind() is not JsonValueKind.String
+                      || (jsonValue.TryGetValue<DateTimeOffset>(out _) is false
+                          && (jsonValue.TryGetValue<string>(out var str) is false
+                              || DateTimeOffset.TryParse(str, out _) is false))
+                select node
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetDateTimeOffsetProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Succeeds_if_the_property_is_a_datetimeoffset()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in Gen.DateTimeOffset
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, propertyValue, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, propertyValue, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetDateTimeOffsetProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEqualTo(propertyValue)
+                        .Within(TimeSpan.FromSeconds(1)); // Allow some leeway for serialization/deserialization differences
+        });
+    }
+}
+
+public class JsonObjectModule_GetAbsoluteUriProperty_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_the_property_is_missing()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any.Null()
+                where jsonObject is null || jsonObject.ContainsKey(propertyName) is false
+                select jsonObject
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetAbsoluteUriProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Fails_if_the_property_is_not_an_absolute_uri()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in
+                from node in JsonNodeGenerator.Any.Null()
+                where node is not JsonValue jsonValue
+                      || jsonValue.GetValueKind() is not JsonValueKind.String
+                      || (jsonValue.TryGetValue<Uri>(out var uri) && uri.IsAbsoluteUri is false)
+                      || (jsonValue.TryGetValue<string>(out var str) && (Uri.TryCreate(str, UriKind.Absolute, out _) is false))
+                select node
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            select (propertyName, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetAbsoluteUriProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Succeeds_if_the_property_is_an_absolute_uri()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in HttpGenerator.AbsoluteUri
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue.ToString())
+            select (propertyName, propertyValue, jsonObject);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, propertyValue, jsonObject) = tuple;
+
+            // Act
+            var result = jsonObject.GetAbsoluteUriProperty(propertyName);
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(propertyValue);
+        });
+    }
+}
+
+public class JsonObjectModule_SetProperty_Tests
+{
+    [Test]
+    public async ValueTask Sets_the_property_value()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in JsonNodeGenerator.Any
+            from jsonObject in JsonObjectGenerator.Any
+            from mutateOriginal in Gen.Bool
+            select (propertyName, propertyValue, jsonObject, mutateOriginal);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, propertyValue, jsonObject, mutateOriginal) = tuple;
+
+            // Act
+            var result = jsonObject.SetProperty(propertyName, propertyValue, mutateOriginal);
+
+            // Assert
+            await Assert.That<JsonObject>(result)
+                        .HasProperty(propertyName)
+                        .WhoseValue
+                        .IsEquivalentTo(propertyValue);
+        });
+    }
+}
+
+public class JsonObjectModule_RemoveProperty_Tests
+{
+    [Test]
+    public async ValueTask Removes_the_property()
+    {
+        var gen =
+            from propertyName in Common.GeneratePropertyName()
+            from propertyValue in JsonNodeGenerator.Any
+            from jsonObject in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(propertyName, propertyValue)
+            from mutateOriginal in Gen.Bool
+            select (propertyName, jsonObject, mutateOriginal);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (propertyName, jsonObject, mutateOriginal) = tuple;
+
+            // Act
+            var result = jsonObject.RemoveProperty(propertyName, mutateOriginal);
+
+            // Assert
+            await Assert.That<JsonObject>(result)
+                        .DoesNotHaveProperty(propertyName);
+        });
+    }
+}
+
+public class JsonObjectModule_MergeWith_Tests
+{
+    [Test]
+    public async ValueTask Result_contains_properties_from_both_objects()
+    {
+        var gen =
+            from originalPropertyNames in GeneratePropertyName().HashSetOf()
+            from otherPropertyNames in
+                from sharedProperties in Generator.SubSetOf(originalPropertyNames)
+                from otherProperties in GeneratePropertyName().HashSetOf()
+                select sharedProperties.Union(otherProperties)
+            from original in
+                from kvps in Generator.Traverse(originalPropertyNames,
+                                                property => from value in JsonNodeGenerator.Any.Null()
+                                                            select KeyValuePair.Create(property, value))
+                select new JsonObject(kvps)
+            from other in
+                from kvps in Generator.Traverse(otherPropertyNames,
+                                                property => from value in JsonNodeGenerator.Any.Null()
+                                                            select KeyValuePair.Create(property, value))
+                from jsonObject in
+                    kvps.IsEmpty
+                    ? Gen.OneOfConst(new JsonObject(), null)
+                    : Gen.Const<JsonObject?>(new JsonObject(kvps))
+                select jsonObject
+            from mutateOriginal in Gen.Bool
+            select (originalPropertyNames, otherPropertyNames, original, other, mutateOriginal);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (originalPropertyNames, otherPropertyNames, original, other, mutateOriginal) = tuple;
+
+            // Act
+            var result = original.MergeWith(other, mutateOriginal);
+
+            // Assert
+            await Assert.That(result.ToDictionary().Keys)
+                        .IsEquivalentTo(originalPropertyNames.Union(otherPropertyNames));
+        });
+    }
+
+    private static Gen<string> GeneratePropertyName() =>
+        from str in Gen.String
+        where string.IsNullOrEmpty(str) is false
+        select str;
+
+    [Test]
+    public async ValueTask Properties_from_other_object_take_precedence_over_original()
+    {
+        var gen =
+            from sharedPropertyName in GeneratePropertyName()
+            from originalValue in JsonNodeGenerator.Any.Null()
+            from otherValue in JsonNodeGenerator.Any.Null()
+            from original in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(sharedPropertyName, originalValue)
+            from other in
+                from jsonObject in JsonObjectGenerator.Any
+                select jsonObject.SetProperty(sharedPropertyName, otherValue)
+            from mutateOriginal in Gen.Bool
+            select (sharedPropertyName, original, other, mutateOriginal);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (sharedPropertyName, original, other, mutateOriginal) = tuple;
+
+            // Act
+            var result = original.MergeWith(other, mutateOriginal);
+
+            // Assert
+            await Assert.That<JsonObject>(result)
+                        .HasProperty(sharedPropertyName)
+                        .WhoseValue
+                        .IsEquivalentTo(other[sharedPropertyName]);
+        });
+    }
+
+    [Test]
+    public async ValueTask Properties_from_original_that_are_not_in_other_are_preserved()
+    {
+        var gen =
+            from originalPropertyNames in GeneratePropertyName().HashSetOf()
+            from otherPropertyNames in
+                from sharedProperties in Generator.SubSetOf(originalPropertyNames)
+                from otherProperties in GeneratePropertyName().HashSetOf()
+                select sharedProperties.Union(otherProperties)
+            where originalPropertyNames.Except(otherPropertyNames).IsEmpty is false
+            from original in
+                from kvps in Generator.Traverse(originalPropertyNames,
+                                                property => from value in JsonNodeGenerator.Any.Null()
+                                                            select KeyValuePair.Create(property, value))
+                select new JsonObject(kvps)
+            from other in
+                from kvps in Generator.Traverse(otherPropertyNames,
+                                                property => from value in JsonNodeGenerator.Any.Null()
+                                                            select KeyValuePair.Create(property, value))
+                from jsonObject in
+                    kvps.IsEmpty
+                    ? Gen.OneOfConst(new JsonObject(), null)
+                    : Gen.Const<JsonObject?>(new JsonObject(kvps))
+                select jsonObject
+            from mutateOriginal in Gen.Bool
+            select (originalPropertyNames, otherPropertyNames, original, other, mutateOriginal);
+
+        await gen.SampleAsync(async tuple =>
+        {
+            // Arrange
+            var (originalPropertyNames, otherPropertyNames, original, other, mutateOriginal) = tuple;
+
+            // Act
+            var result = original.MergeWith(other, mutateOriginal);
+
+            // Assert
+            var originalOnlyPropertyNames = originalPropertyNames.Except(otherPropertyNames);
+            foreach (var propertyName in originalOnlyPropertyNames)
+            {
+                await Assert.That<JsonObject>(result)
+                            .HasProperty(propertyName)
+                            .WhoseValue
+                            .IsEquivalentTo(original[propertyName]);
+            }
+        });
+    }
+}
+
+public class JsonObjectModule_From_Tests
+{
+    [Test]
+    public async ValueTask Fails_if_data_does_not_represent_a_json_object()
+    {
+        var gen =
+            JsonNodeGenerator.Any
+                             .Where(node => node is not JsonObject)
+                             .Select(node => BinaryData.FromObjectAsJson(node))
+                             .Null();
+
+        await gen.SampleAsync(async data =>
+        {
+            // Act
+            var result = JsonObjectModule.From(data);
+
+            // Assert
+            await Assert.That(result)
+                        .IsError();
+        });
+    }
+
+    [Test]
+    public async ValueTask Roundtrips()
+    {
+        var gen = JsonNodeGenerator.JsonObject;
+
+        await gen.SampleAsync(async jsonObject =>
+        {
+            // Arrange
+            var data = BinaryData.FromObjectAsJson(jsonObject);
+
+            // Act
+            var result = JsonObjectModule.From(data);
+
+            // Assert
+            await Assert.That(result)
+                        .IsSuccess()
+                        .WhoseValue
+                        .IsEquivalentTo(jsonObject);
+        });
+    }
+}
+
 // public class JsonObjectTests
 // {
-
-//     [Fact]
-//     public void GetOptionalProperty_returns_none_if_the_property_is_missing()
-//     {
-//         var generator = from jsonObject in Generator.JsonObject
-//                         from propertyName in GeneratePropertyName()
-//                         where jsonObject.ContainsKey(propertyName) is false
-//                         select (propertyName, jsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetOptionalProperty(propertyName);
-//             result.Should().BeNone();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetOptionalProperty_returns_none_if_the_property_is_null()
-//     {
-//         var generator = from propertyValue in Gen.Const((JsonNode?)null)
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, x.JsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetOptionalProperty(propertyName);
-//             result.Should().BeNone();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetOptionalProperty_returns_some_if_the_property_is_present()
-//     {
-//         var generator = from propertyValue in JsonNodeGenerator.Value
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, propertyValue, x.JsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, propertyValue, jsonObject) = x;
-//             var result = jsonObject.GetOptionalProperty(propertyName);
-//             result.Should().BeSome().Which.Should().BeEquivalentTo(propertyValue);
-//         });
-//     }
-
-//     [Fact]
-//     public void GetJsonObjectProperty_fails_if_the_property_is_missing()
-//     {
-//         var generator = from jsonObject in Generator.JsonObject
-//                         from propertyName in GeneratePropertyName()
-//                         where jsonObject.ContainsKey(propertyName) is false
-//                         select (propertyName, jsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetJsonObjectProperty(propertyName);
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetJsonObjectProperty_fails_if_the_property_is_not_a_json_object()
-//     {
-//         var generator = from propertyValue in JsonNodeGenerator.NonJsonObject
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, x.JsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetJsonObjectProperty(propertyName);
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetJsonObjectProperty_succeeds_if_the_property_is_a_json_object()
-//     {
-//         var generator = from propertyValue in JsonNodeGenerator.JsonObject
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, propertyValue, x.JsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, propertyValue, jsonObject) = x;
-//             var result = jsonObject.GetJsonObjectProperty(propertyName);
-//             result.Should().BeSuccess().Which.Should().BeEquivalentTo(propertyValue);
-//         });
-//     }
-
-//     [Fact]
-//     public void GetJsonArrayProperty_fails_if_the_property_is_missing()
-//     {
-//         var generator = from jsonObject in Generator.JsonObject
-//                         from propertyName in GeneratePropertyName()
-//                         where jsonObject.ContainsKey(propertyName) is false
-//                         select (propertyName, jsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetJsonArrayProperty(propertyName);
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetJsonArrayProperty_fails_if_the_property_is_not_a_json_array()
-//     {
-//         var generator = from propertyValue in JsonNodeGenerator.NonJsonArray
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, x.JsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetJsonArrayProperty(propertyName);
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetJsonArrayProperty_succeeds_if_the_property_is_a_json_array()
-//     {
-//         var generator = from propertyValue in JsonNodeGenerator.JsonArray
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, propertyValue, x.JsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, propertyValue, jsonObject) = x;
-//             var result = jsonObject.GetJsonArrayProperty(propertyName);
-//             result.Should().BeSuccess().Which.Should().BeEquivalentTo(propertyValue);
-//         });
-//     }
-
-//     [Fact]
-//     public void GetJsonValueProperty_fails_if_the_property_is_missing()
-//     {
-//         var generator = from jsonObject in Generator.JsonObject
-//                         from propertyName in GeneratePropertyName()
-//                         where jsonObject.ContainsKey(propertyName) is false
-//                         select (propertyName, jsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetJsonValueProperty(propertyName);
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetJsonValueProperty_fails_if_the_property_is_not_a_json_value()
-//     {
-//         var generator = from propertyValue in JsonNodeGenerator.NonJsonValue
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, x.JsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetJsonValueProperty(propertyName);
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetJsonValueProperty_succeeds_if_the_property_is_a_json_value()
-//     {
-//         var generator = from propertyValue in JsonNodeGenerator.JsonValue
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, propertyValue, x.JsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, propertyValue, jsonObject) = x;
-//             var result = jsonObject.GetJsonValueProperty(propertyName);
-//             result.Should().BeSuccess().Which.Should().BeEquivalentTo(propertyValue);
-//         });
-//     }
-
-//     [Fact]
-//     public void GetStringProperty_fails_if_the_property_is_missing()
-//     {
-//         var generator = from jsonObject in Generator.JsonObject
-//                         from propertyName in GeneratePropertyName()
-//                         where jsonObject.ContainsKey(propertyName) is false
-//                         select (propertyName, jsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetStringProperty(propertyName);
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetStringProperty_fails_if_the_property_is_not_a_string()
-//     {
-//         var generator = from propertyValue in JsonValueGenerator.NonString
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, x.JsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetStringProperty(propertyName);
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetStringProperty_succeeds_if_the_property_is_a_string()
-//     {
-//         var generator = from propertyValue in JsonValueGenerator.String
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, propertyValue, x.JsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, propertyValue, jsonObject) = x;
-//             var result = jsonObject.GetStringProperty(propertyName);
-//             result.Should().BeSuccess().Which.Should().Be(propertyValue.GetValue<string>());
-//         });
-//     }
-
-//     [Fact]
-//     public void GetIntProperty_fails_if_the_property_is_missing()
-//     {
-//         var generator = from jsonObject in Generator.JsonObject
-//                         from propertyName in GeneratePropertyName()
-//                         where jsonObject.ContainsKey(propertyName) is false
-//                         select (propertyName, jsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetIntProperty(propertyName);
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetIntProperty_fails_if_the_property_is_not_an_int()
-//     {
-//         var generator = from propertyValue in JsonValueGenerator.NonInt
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, x.JsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetIntProperty(propertyName);
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetIntProperty_succeeds_if_the_property_is_an_int()
-//     {
-//         var generator = from propertyValue in JsonValueGenerator.Int
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, propertyValue, x.JsonObject);
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, propertyValue, jsonObject) = x;
-//             var result = jsonObject.GetIntProperty(propertyName);
-//             result.Should().BeSuccess().Which.Should().Be(propertyValue.GetValue<int>());
-//         });
-//     }
-
-//     [Fact]
-//     public void GetBoolProperty_fails_if_the_property_is_missing()
-//     {
-//         var generator = from jsonObject in Generator.JsonObject
-//                         from propertyName in GeneratePropertyName()
-//                         where jsonObject.ContainsKey(propertyName) is false
-//                         select (propertyName, jsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetBoolProperty(propertyName);
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetBoolProperty_fails_if_the_property_is_not_a_bool()
-//     {
-//         var generator = from propertyValue in JsonValueGenerator.NonBool
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, x.JsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetBoolProperty(propertyName);
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetBoolProperty_succeeds_if_the_property_is_a_bool()
-//     {
-//         var generator = from propertyValue in JsonValueGenerator.Bool
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, propertyValue, x.JsonObject);
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, propertyValue, jsonObject) = x;
-//             var result = jsonObject.GetBoolProperty(propertyName);
-//             result.Should().BeSuccess().Which.Should().Be(propertyValue.GetValue<bool>());
-//         });
-//     }
-
-//     [Fact]
-//     public void GetGuidProperty_fails_if_the_property_is_missing()
-//     {
-//         var generator = from jsonObject in Generator.JsonObject
-//                         from propertyName in GeneratePropertyName()
-//                         where jsonObject.ContainsKey(propertyName) is false
-//                         select (propertyName, jsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetGuidProperty(propertyName);
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetGuidProperty_fails_if_the_property_is_not_a_guid()
-//     {
-//         var generator = from propertyValue in JsonValueGenerator.NonGuid
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, x.JsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetGuidProperty(propertyName);
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetGuidProperty_succeeds_if_the_property_is_a_guid()
-//     {
-//         var generator = from propertyValue in JsonValueGenerator.Guid
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, propertyValue, x.JsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, propertyValue, jsonObject) = x;
-//             var result = jsonObject.GetGuidProperty(propertyName);
-//             result.Should().BeSuccess().Which.Should().Be(propertyValue.GetValue<Guid>());
-//         });
-//     }
-
-//     [Fact]
-//     public void GetAbsoluteUriProperty_fails_if_the_property_is_missing()
-//     {
-//         var generator = from jsonObject in Generator.JsonObject
-//                         from propertyName in GeneratePropertyName()
-//                         where jsonObject.ContainsKey(propertyName) is false
-//                         select (propertyName, jsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetAbsoluteUriProperty(propertyName);
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetAbsoluteUriProperty_fails_if_the_property_is_not_an_absolute_uri()
-//     {
-//         var generator = from propertyValue in JsonValueGenerator.NonAbsoluteUri
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, x.JsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, jsonObject) = x;
-//             var result = jsonObject.GetAbsoluteUriProperty(propertyName);
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void GetAbsoluteUriProperty_succeeds_if_the_property_is_an_absolute_uri()
-//     {
-//         var generator = from propertyValue in JsonValueGenerator.AbsoluteUri
-//                         from x in GenerateJsonObject(propertyValue)
-//                         select (x.PropertyName, propertyValue, x.JsonObject);
-
-//         generator.Sample(x =>
-//         {
-//             var (propertyName, propertyValue, jsonObject) = x;
-//             var result = jsonObject.GetAbsoluteUriProperty(propertyName);
-//             result.Should().BeSuccess().Which.Should().Be(propertyValue.GetValue<Uri>());
-//         });
-//     }
-
-//     [Fact]
-//     public void From_succeeds_if_the_content_is_a_json_object()
-//     {
-//         var generator = Generator.JsonObject;
-
-//         generator.Sample(jsonObject =>
-//         {
-//             var binaryData = BinaryData.FromObjectAsJson(jsonObject);
-
-//             var result = JsonObjectModule.From(binaryData);
-
-//             result.Should().BeSuccess().Which.Should().BeEquivalentTo(jsonObject);
-//         });
-//     }
-
-//     [Fact]
-//     public void From_fails_if_the_content_is_not_a_json_object()
-//     {
-//         var generator = JsonNodeGenerator.NonJsonObject;
-
-//         generator.Sample(jsonNode =>
-//         {
-//             var binaryData = BinaryData.FromObjectAsJson(jsonNode);
-
-//             var result = JsonObjectModule.From(binaryData);
-
-//             result.Should().BeError();
-//         });
-//     }
-
-//     [Fact]
-//     public void SetProperty_sets_the_property_in_the_json_object()
-//     {
-//         var generator = from jsonObject in Generator.JsonObject
-//                             // Generate a property name that is either one of the existing keys or a new one
-//                         from propertyName in jsonObject.Count > 0
-//                                                 ? Gen.OneOf(Gen.OneOfConst(jsonObject.ToDictionary().Keys.ToArray()),
-//                                                             GeneratePropertyName())
-//                                                 : GeneratePropertyName()
-//                         from propertyValue in JsonNodeGenerator.Value
-//                         select (jsonObject, propertyName, propertyValue);
-
-//         generator.Sample(x =>
-//         {
-//             var (jsonObject, propertyName, propertyValue) = x;
-
-//             var result = jsonObject.SetProperty(propertyName, propertyValue);
-
-//             result.Should().ContainProperty(propertyName).Which?.Should().BeEquivalentTo(propertyValue);
-//         });
-//     }
-
-//     [Fact]
-//     public void RemoveProperty_removes_the_property_from_the_json_object()
-//     {
-//         var generator = from jsonObject in Generator.JsonObject
-//                             // Generate a property name that is either one of the existing keys or a new one
-//                         from propertyName in jsonObject.Count > 0
-//                                                 ? Gen.OneOf(Gen.OneOfConst(jsonObject.ToDictionary().Keys.ToArray()),
-//                                                             GeneratePropertyName())
-//                                                 : GeneratePropertyName()
-//                         select (jsonObject, propertyName);
-
-//         generator.Sample(x =>
-//         {
-//             var (jsonObject, propertyName) = x;
-
-//             var result = jsonObject.RemoveProperty(propertyName);
-
-//             result.Should().NotContainProperty(propertyName);
-//         });
-//     }
 
 //     [Fact]
 //     public void MergeWith_returns_original_object_when_other_is_null_or_empty()

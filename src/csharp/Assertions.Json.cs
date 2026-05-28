@@ -8,7 +8,7 @@ using TUnit.Assertions.Sources;
 namespace common;
 
 public class JsonNodeIsEquivalentToJsonNodeAssertion<T>(AssertionContext<T> context, JsonNode? expected)
-    : Assertion<T>(context) where T : JsonNode
+    : Assertion<T>(context) where T : JsonNode?
 {
     protected override string GetExpectation() =>
         $"JSON node to be equivalent to {expected?.ToJsonString() ?? "null"}";
@@ -28,6 +28,41 @@ public class JsonNodeIsEquivalentToJsonNodeAssertion<T>(AssertionContext<T> cont
     }
 }
 
+public class JsonObjectHasProperty(AssertionContext<JsonObject> context, string propertyName)
+    : MappedValueAssertion<JsonObject, JsonNode?>(context,
+                                                  async jsonObject =>
+                                                  {
+                                                      await ValueTask.CompletedTask;
+
+                                                      return jsonObject.TryGetPropertyValue(propertyName, out var propertyValue)
+                                                            ? Result.Success(propertyValue)
+                                                            : Error.From($"it was not found.");
+                                                  })
+{
+    public ValueAssertion<JsonNode?> WhoseValue =>
+        GetMappedAssertion();
+
+    protected override string GetExpectation() => $"JSON object to have property '{propertyName}'";
+}
+
+public class JsonObjectDoesNotHaveProperty(AssertionContext<JsonObject> context, string propertyName) : Assertion<JsonObject>(context)
+{
+    protected override string GetExpectation() => $"JSON object to not have property '{propertyName}'";
+
+    protected override async Task<AssertionResult> CheckAsync(EvaluationMetadata<JsonObject> metadata)
+    {
+        await ValueTask.CompletedTask;
+
+        return (metadata.Exception, metadata.Value) switch
+        {
+            (not null, _) => AssertionResult.Failed($"threw {metadata.Exception.GetType().Name} with message {metadata.Exception.Message}", metadata.Exception),
+            (null, null) => AssertionResult.Passed,
+            (null, var jsonObject) when jsonObject.TryGetPropertyValue(propertyName, out var propertyValue) => AssertionResult.Failed($"had property with value {propertyValue?.ToJsonString() ?? "null"}"),
+            (null, _) => AssertionResult.Passed
+        };
+    }
+}
+
 public class JsonObjectHasStringPropertyAssertion(AssertionContext<JsonObject> context, string propertyName)
     : MappedValueAssertion<JsonObject, string>(context,
                                                jsonObject => ValueTask.FromResult(jsonObject.GetStringProperty(propertyName)))
@@ -39,7 +74,7 @@ public class JsonObjectHasIntPropertyAssertion(AssertionContext<JsonObject> cont
     : MappedValueAssertion<JsonObject, int>(context,
                                             jsonObject => ValueTask.FromResult(jsonObject.GetIntProperty(propertyName)))
 {
-    public ValueAssertion<int> Which =>
+    public ValueAssertion<int> WhoseValue =>
         GetMappedAssertion();
 
     protected override string GetExpectation() => $"JSON object to have int property '{propertyName}'";
@@ -49,7 +84,7 @@ public class JsonObjectHasBoolPropertyAssertion(AssertionContext<JsonObject> con
     : MappedValueAssertion<JsonObject, bool>(context,
                                              jsonObject => ValueTask.FromResult(jsonObject.GetBoolProperty(propertyName)))
 {
-    public ValueAssertion<bool> Which =>
+    public ValueAssertion<bool> WhoseValue =>
         GetMappedAssertion();
 
     protected override string GetExpectation() => $"JSON object to have bool property '{propertyName}'";
@@ -59,7 +94,7 @@ public class JsonObjectHasJsonArrayPropertyAssertion(AssertionContext<JsonObject
     : MappedValueAssertion<JsonObject, JsonArray>(context,
                                                   jsonObject => ValueTask.FromResult(jsonObject.GetJsonArrayProperty(propertyName)))
 {
-    public ValueAssertion<JsonArray> Which =>
+    public ValueAssertion<JsonArray> WhoseValue =>
         GetMappedAssertion();
 
     protected override string GetExpectation() => $"JSON object to have JSON array property '{propertyName}'";
@@ -69,7 +104,7 @@ public class JsonObjectCanBeDeserializedTo<T>(AssertionContext<JsonObject> conte
     : MappedValueAssertion<JsonObject, T>(context,
                                           jsonObject => ValueTask.FromResult(deserialize(jsonObject)))
 {
-    public ValueAssertion<T> Which =>
+    public ValueAssertion<T> WhoseValue =>
         GetMappedAssertion();
 
     protected override string GetExpectation() => $"JSON object to be deserializable to '{typeof(T).Name}'";
@@ -77,10 +112,16 @@ public class JsonObjectCanBeDeserializedTo<T>(AssertionContext<JsonObject> conte
 
 
 
-public static class JsonNodeAssertionExtensions
+public static class JsonAssertionExtensions
 {
     extension(IAssertionSource<JsonObject> source)
     {
+        public JsonObjectDoesNotHaveProperty DoesNotHaveProperty(string propertyName) =>
+            new(source.Context, propertyName);
+
+        public JsonObjectHasProperty HasProperty(string propertyName) =>
+            new(source.Context, propertyName);
+
         public JsonObjectHasStringPropertyAssertion HasStringProperty(string propertyName) =>
             new(source.Context, propertyName);
 
@@ -97,7 +138,7 @@ public static class JsonNodeAssertionExtensions
             new(source.Context, deserialize);
     }
 
-    extension<T>(IAssertionSource<T> source) where T : JsonNode
+    extension<T>(IAssertionSource<T> source) where T : JsonNode?
     {
         public JsonNodeIsEquivalentToJsonNodeAssertion<T> IsEquivalentTo(JsonNode? expected, [CallerArgumentExpression(nameof(expected))] string? expectedExpression = null)
         {
